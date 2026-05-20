@@ -1,7 +1,7 @@
 <?php
 session_start();
 require_once '../config/koneksi.php';
-require_once 'auto_cair_deposito.php';
+// HAPUS REQUIRE AUTO CAIR DARI SINI
 
 // Proteksi akses
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'peserta') {
@@ -34,30 +34,35 @@ $query_settings = mysqli_query($conn, "
 ");
 
 $settings = mysqli_fetch_assoc($query_settings);
-
 $active_period = $settings['active_period'] ?? 1;
-$period_status = $settings['period_status']; // Pastikan variabel status ini ada
+$period_status = $settings['period_status']; 
 
-// HANYA CEK COVER PAGE JIKA STATUS PERIODE ADALAH 'OPEN'
-if ($period_status == 'open') {
-    $q_cover = mysqli_query($conn,"
-        SELECT id
-        FROM period_cover_views
-        WHERE user_id='$user_id'
-        AND period='$active_period'
-    ");
+// ==============================================================
+// 1. LOGIKA COVER PAGE (WAJIB UNTUK SEMUA PERIODE/STATUS)
+// ==============================================================
+$q_cover = mysqli_query($conn,"
+    SELECT id
+    FROM period_cover_views
+    WHERE user_id='$user_id'
+    AND period='$active_period'
+");
 
-    if(mysqli_num_rows($q_cover) == 0) {
-        header("Location: cover.php");
-        exit; // <--- WAJIB TAMBAHKAN INI
-    }
-}
-
-if(mysqli_num_rows($q_cover) == 0){
-
+// Jika belum baca cover page, stop semua dan lempar ke cover.php
+if(mysqli_num_rows($q_cover) == 0) {
     header("Location: cover.php");
-    exit;
+    exit; 
 }
+// ==============================================================
+
+
+// ==============================================================
+// 2. LOGIKA PROFIT BERJALAN DI SINI
+// (Hanya tereksekusi jika user sudah lolos pengecekan Cover Page)
+// ==============================================================
+require_once 'auto_cair_deposito.php';
+// ==============================================================
+
+
 $period_status = $settings['period_status'] ?? 'closed';
 $end_time = $settings['end_time'];
 
@@ -71,10 +76,6 @@ if (!empty($end_time) && $period_status == 'open') {
 // ==========================================
 // KUNCI PERBAIKAN: Panggil kolom harga_pX 
 // agar sama persis dengan detail_aset.php
-// ==========================================
-// ==========================================
-// KUNCI PERBAIKAN: Gunakan value_p dan 
-// tambahkan Error Handling (mysqli_error)
 // ==========================================
 $kolom_val = "value_p" . $active_period; 
 $kolom_laba = "laba_p" . $active_period;
@@ -266,27 +267,43 @@ btnList.addEventListener('click', function(){
 // COUNTDOWN
 let sisaDetik = <?php echo $sisa_waktu_detik; ?>;
 const statusPeriode = "<?php echo $period_status; ?>";
+const endTime = "<?php echo $end_time; ?>"; // Tambahan variabel untuk mengecek settingan admin
 const countdownEl = document.getElementById("countdown");
 
-if (sisaDetik > 0 && statusPeriode === 'open') {
-    const x = setInterval(function(){
-        sisaDetik--;
-        if(sisaDetik <= 0){
-            clearInterval(x);
-            countdownEl.innerHTML = "HABIS";
-            countdownEl.className = "fw-bold text-danger";
-            setTimeout(() => location.reload(), 2000);
-        } else {
-            const minutes = Math.floor(sisaDetik / 60);
-            const seconds = Math.floor(sisaDetik % 60);
-            const m = minutes < 10 ? "0" + minutes : minutes;
-            const s = seconds < 10 ? "0" + seconds : seconds;
-            countdownEl.innerHTML = m + ":" + s;
-        }
-    },1000);
-} else {
+if (statusPeriode === 'closed') {
+    // 1. Jika admin menutup periode secara manual
     countdownEl.innerHTML = "DITUTUP";
     countdownEl.className = "fw-bold text-danger";
+} else {
+    // JIKA PERIODE SEDANG OPEN:
+    if (endTime && endTime.trim() !== "") {
+        // 2. Jika admin MENYETING WAKTU
+        if (sisaDetik > 0) {
+            const x = setInterval(function(){
+                sisaDetik--;
+                if(sisaDetik <= 0){
+                    clearInterval(x);
+                    countdownEl.innerHTML = "HABIS";
+                    countdownEl.className = "fw-bold text-danger";
+                    setTimeout(() => location.reload(), 2000);
+                } else {
+                    const minutes = Math.floor(sisaDetik / 60);
+                    const seconds = Math.floor(sisaDetik % 60);
+                    const m = minutes < 10 ? "0" + minutes : minutes;
+                    const s = seconds < 10 ? "0" + seconds : seconds;
+                    countdownEl.innerHTML = m + ":" + s;
+                }
+            },1000);
+        } else {
+            // Waktu sudah lewat
+            countdownEl.innerHTML = "HABIS";
+            countdownEl.className = "fw-bold text-danger";
+        }
+    } else {
+        // 3. Jika admin TIDAK MENYETING WAKTU (Unlimited)
+        countdownEl.innerHTML = "--:--";
+        countdownEl.className = "fw-bold text-primary"; // Tetap warna biru agar tidak terkesan tutup
+    }
 }
 </script>
 <?php if(!empty($_SESSION['deposito_notifications'])): ?>

@@ -56,24 +56,38 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update_settings'])) {
         $pesan_sukses = "Pengaturan Status Market dan Timer berhasil diperbarui!";
     }
 
-    // Eksekusi update tabel settings
-    if ($status == 'open' && $duration > 0) {
+// ===============================================
+    // Eksekusi update tabel settings (PERBAIKAN TIMER)
+    // ===============================================
+    if ($status == 'open') {
+        
+        if ($duration > 0) {
+            // Jika admin mengisi waktu (> 0), atur waktu selesainya
+            $end_time = date('Y-m-d H:i:s', strtotime("+$duration minutes"));
+            
+            $query_update = "
+                UPDATE system_settings
+                SET active_period = '$new_period',
+                    period_status = '$status',
+                    end_time = '$end_time'
+            ";
+        } else {
+            // Jika admin mengisi 0 / kosong, jadikan timer UNLIMITED (NULL)
+            $query_update = "
+                UPDATE system_settings
+                SET active_period = '$new_period',
+                    period_status = '$status',
+                    end_time = NULL
+            ";
+        }
 
-        $end_time = date('Y-m-d H:i:s', strtotime("+$duration minutes"));
-
+    } else {
+        // Jika status CLOSED, otomatis matikan timer (NULL)
         $query_update = "
             UPDATE system_settings
             SET active_period = '$new_period',
                 period_status = '$status',
-                end_time = '$end_time'
-        ";
-
-    } else {
-
-        $query_update = "
-            UPDATE system_settings
-            SET active_period = '$new_period',
-                period_status = '$status'
+                end_time = NULL
         ";
     }
 

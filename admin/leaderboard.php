@@ -22,33 +22,47 @@ while ($u = mysqli_fetch_assoc($q_users)) {
     $portfolio_value = 0;
 
 $q_port = mysqli_query($conn, "
-    SELECT 
-        a.$kolom_harga AS harga_sekarang,
-        SUM(
-            CASE 
-                WHEN t.type = 'buy' THEN t.qty 
-                ELSE 0 
-            END
-        ) 
-        -
-        SUM(
-            CASE 
-                WHEN t.type = 'sell' THEN t.qty 
-                ELSE 0 
-            END
-        ) AS total_unit
+        SELECT 
+            a.tipe_simulasi,
+            a.$kolom_harga AS harga_sekarang,
+            
+            -- Hitung Sisa Unit (Untuk Saham, Emas, Properti)
+            SUM(CASE WHEN t.type = 'buy' THEN t.qty ELSE 0 END) -
+            SUM(CASE WHEN t.type = 'sell' AND t.qty > 0 THEN t.qty ELSE 0 END) AS total_unit,
+            
+            -- Hitung Sisa Modal Uang (Untuk Deposito, Reksadana, Obligasi)
+            SUM(CASE WHEN t.type = 'buy' THEN t.amount_money ELSE 0 END) -
+            SUM(CASE WHEN t.type = 'sell' AND t.qty > 0 THEN t.amount_money ELSE 0 END) AS total_modal
 
-    FROM transactions t
+        FROM transactions t
+        JOIN market_assets a ON t.asset_id = a.id
+        WHERE t.user_id = '$uid'
+        GROUP BY a.id
+    ");
 
-    JOIN market_assets a 
-    ON t.asset_id = a.id
+    if (!$q_port) {
+        die(mysqli_error($conn));
+    }
 
-    WHERE t.user_id = '$uid'
-
-    GROUP BY a.id
-
-    HAVING total_unit > 0.0001
-");
+    while ($pt = mysqli_fetch_assoc($q_port)) {
+        
+        // PISAHKAN LOGIKA PERHITUNGAN BERDASARKAN TIPE SIMULASI
+        if ($pt['tipe_simulasi'] == 'persentase') {
+            
+            // DEPOSITO / REKSADANA: Dinilai dari sisa nominal uang pokoknya
+            if ($pt['total_modal'] > 0) {
+                $portfolio_value += floatval($pt['total_modal']);
+            }
+            
+        } else {
+            
+            // SAHAM / EMAS / WARALABA: Dinilai dari sisa unit dikali valuasi sekarang
+            if ($pt['total_unit'] > 0) {
+                $portfolio_value += (floatval($pt['total_unit']) * floatval($pt['harga_sekarang']));
+            }
+            
+        }
+    }
 
 if (!$q_port) {
 

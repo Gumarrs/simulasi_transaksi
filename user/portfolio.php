@@ -123,6 +123,7 @@ $q_detail = mysqli_query($conn, "
         t.qty,
         t.amount_money,
         t.realized_profit,
+        t.buy_period,
         a.nama_aset,
         a.tipe_simulasi
 
