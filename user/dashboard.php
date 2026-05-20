@@ -36,12 +36,22 @@ $query_settings = mysqli_query($conn, "
 $settings = mysqli_fetch_assoc($query_settings);
 
 $active_period = $settings['active_period'] ?? 1;
-$q_cover = mysqli_query($conn,"
-    SELECT id
-    FROM period_cover_views
-    WHERE user_id='$user_id'
-    AND period='$active_period'
-");
+$period_status = $settings['period_status']; // Pastikan variabel status ini ada
+
+// HANYA CEK COVER PAGE JIKA STATUS PERIODE ADALAH 'OPEN'
+if ($period_status == 'open') {
+    $q_cover = mysqli_query($conn,"
+        SELECT id
+        FROM period_cover_views
+        WHERE user_id='$user_id'
+        AND period='$active_period'
+    ");
+
+    if(mysqli_num_rows($q_cover) == 0) {
+        header("Location: cover.php");
+        exit; // <--- WAJIB TAMBAHKAN INI
+    }
+}
 
 if(mysqli_num_rows($q_cover) == 0){
 
@@ -318,6 +328,51 @@ showDepositoNotif();
 </script>
 
 <?php unset($_SESSION['deposito_notifications']); ?>
+<?php endif; ?>
+
+<?php if(!empty($_SESSION['force_sell_notifications'])): ?>
+<script>
+const forceSells = <?php echo json_encode($_SESSION['force_sell_notifications']); ?>;
+let indexFS = 0;
+
+function showForceSellNotif() {
+    if (indexFS >= forceSells.length) return;
+    const item = forceSells[indexFS];
+    indexFS++;
+
+    let profitText = item.profit >= 0 ? `+ Rp ${Number(item.profit).toLocaleString('id-ID')}` : `- Rp ${Number(Math.abs(item.profit)).toLocaleString('id-ID')}`;
+    let profitColor = item.profit >= 0 ? 'green' : 'red';
+
+    Swal.fire({
+        title: 'Penjualan Otomatis Akhir Simulasi',
+        icon: 'info',
+        html: `
+            <div style="text-align:left">
+                <p>Simulasi (Periode Terakhir) telah berakhir. Sisa aset <b>${item.aset}</b> Anda telah dicairkan otomatis ke Saldo Tunai.</p>
+                <hr>
+                <table style="width:100%">
+                    <tr>
+                        <td>Total Nilai Jual</td>
+                        <td align="right"><b>Rp ${Number(item.hasil).toLocaleString('id-ID')}</b></td>
+                    </tr>
+                    <tr>
+                        <td>Profit/Loss</td>
+                        <td align="right" style="color:${profitColor}"><b>${profitText}</b></td>
+                    </tr>
+                </table>
+            </div>
+        `,
+        confirmButtonText: 'OK',
+        allowOutsideClick: false
+    }).then(() => {
+        showForceSellNotif(); // Panggil notif selanjutnya jika ada beberapa aset
+    });
+}
+
+// Jalankan notifikasi force sell
+setTimeout(showForceSellNotif, 500); // delay dikit agar tidak bentrok dengan notif deposito
+</script>
+<?php unset($_SESSION['force_sell_notifications']); ?>
 <?php endif; ?>
 </body>
 </html>

@@ -164,15 +164,18 @@ while($d = mysqli_fetch_assoc($q_detail)) {
     }
 
     // CAIR PROFIT DEPOSITO (Tipe Sell tapi QTY = 0)
-    if($d['type'] == 'sell' && floatval($d['qty']) == 0 && $d['tipe_simulasi'] == 'persentase') {
-        
-        $history_detail[$period]['profit_total'] += $d['realized_profit'];
-        
-        $history_detail[$period]['sell_items'][] = [
-            'aset' => $d['nama_aset'] . ' (Pencairan Profit)',
-            'nominal' => $d['amount_money']
-        ];
-    }
+        if($d['type'] == 'sell' && floatval($d['qty']) == 0 && $d['tipe_simulasi'] == 'persentase') {
+            
+            $history_detail[$period]['profit_total'] += $d['realized_profit'];
+            
+            // Membaca langsung periode kepemilikan aset dari database
+            $p_profit = $d['buy_period']; 
+            
+            $history_detail[$period]['sell_items'][] = [
+                'aset' => $d['nama_aset'] . ' (Pencairan Profit Periode ' . $p_profit . ')',
+                'nominal' => $d['amount_money']
+            ];
+        }
     
     // SELL NORMAL (Jual Pokok Aset / Saham)
     elseif($d['type'] == 'sell' && floatval($d['qty']) > 0) {
