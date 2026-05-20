@@ -415,33 +415,29 @@
         $avg_buy_price =
             floatval($data_avg['avg_buy_price']);
 
-
 // ======================================
         // HITUNG REALIZED PROFIT
         // ======================================
 
         $sell_price = $val_now;
-        $bonus_laba = 0;
+        
+        // KUNCI PENTING: Matikan bonus laba di sini agar tidak dobel.
+        // Laba/Bagi Hasil bisnis HANYA diberikan melalui Pop-Up (proses_bisnis.php)
+        $bonus_laba = 0; 
 
         if ($tipe_simulasi == 'persentase') {
             
-            // LOGIKA BARU UNTUK DEPOSITO/OBLIGASI/REKSADANA
-            // Saat klik "Jual Pokok", uang kembali sejumlah modal awal (qty)
-            // Profit bernilai 0 di sini karena profitnya sudah otomatis cair dari auto_cair_deposito
+            // LOGIKA DEPOSITO / REKSADANA
             $modal_asli = $nominal; 
             $hasil_penjualan = $nominal; 
             $realized_profit = 0;
 
         } else {
             
-            // LOGIKA LAMA (Untuk Bisnis, Crypto, dll)
-            if ($tipe_simulasi == 'bisnis') {
-                // laba usaha per unit
-                $bonus_laba = $qty * $bunga_now;
-            }
-
+            // LOGIKA SAHAM, EMAS, BISNIS, PROPERTI
+            // Murni hanya menghitung Capital Gain (Selisih Harga Jual dan Modal Beli Rata-rata)
             $modal_asli = $qty * $avg_buy_price;
-            $hasil_penjualan = ($qty * $sell_price) + $bonus_laba;
+            $hasil_penjualan = $qty * $sell_price;
             $realized_profit = $hasil_penjualan - $modal_asli;
             
         }

@@ -118,6 +118,23 @@ if ($period_status == 'closed') {
         $harga_jual_now = floatval($a['value_p' . $active_period]);
         $tipe_sim = $a['tipe_simulasi'];
 
+        // Cegah force sell berulang saat reload
+$q_force = mysqli_query($conn,"
+    SELECT id
+    FROM transactions
+    WHERE
+        user_id='$user_id'
+        AND asset_id='$a_id'
+        AND type='sell'
+        AND buy_period='$active_period'
+        AND qty > 0
+    LIMIT 1
+");
+
+if(mysqli_num_rows($q_force) > 0){
+    continue;
+}
+
         // Hitung sisa QTY dan Modal saat ini
         $q_qty = mysqli_query($conn, "
             SELECT 
@@ -142,16 +159,45 @@ if ($period_status == 'closed') {
                 $realized_profit = 0; 
                 $qty_jual = $sisa_modal; 
             } else {
-                $hasil_penjualan = $sisa_qty * $harga_jual_now;
-                
-                $q_avg = mysqli_query($conn, "SELECT SUM(amount_money) as total_uang, SUM(qty) as total_qty FROM transactions WHERE user_id='$user_id' AND asset_id='$a_id' AND type='buy'");
-                $d_avg = mysqli_fetch_assoc($q_avg);
-                $avg_buy_price = ($d_avg['total_qty'] > 0) ? (floatval($d_avg['total_uang']) / floatval($d_avg['total_qty'])) : 0;
-                
-                $modal_asli = $sisa_qty * $avg_buy_price;
-                $realized_profit = $hasil_penjualan - $modal_asli;
-                $qty_jual = $sisa_qty;
-            }
+
+    $hasil_penjualan =
+    $sisa_qty * $harga_jual_now;
+
+    // KHUSUS BISNIS
+    if($tipe_sim == 'bisnis'){
+
+        $realized_profit = 0;
+
+    } else {
+
+        $q_avg = mysqli_query($conn,"
+            SELECT
+            SUM(amount_money) total_uang,
+            SUM(qty) total_qty
+            FROM transactions
+            WHERE
+            user_id='$user_id'
+            AND asset_id='$a_id'
+            AND type='buy'
+        ");
+
+        $d_avg =
+        mysqli_fetch_assoc($q_avg);
+
+        $avg_buy_price =
+        ($d_avg['total_qty']>0)
+        ? ($d_avg['total_uang']/$d_avg['total_qty'])
+        : 0;
+
+        $modal_asli =
+        $sisa_qty*$avg_buy_price;
+
+        $realized_profit =
+        $hasil_penjualan-$modal_asli;
+    }
+
+    $qty_jual = $sisa_qty;
+}
 
             // 1. Tambah Hasil Penjualan ke Saldo User
             mysqli_query($conn, "UPDATE users SET balance = balance + '$hasil_penjualan' WHERE id = '$user_id'");

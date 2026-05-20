@@ -158,10 +158,8 @@ $total_pengeluaran_hidup =
 // SISA HARTA SAAT INI
 // ======================================
 
-$sisa_harta =
-    $total_harta_awal
-    + $total_profit_all
-    - $total_pengeluaran_hidup;
+$sisa_harta = floatval($user['current_balance']);
+
 ?>
 
 <!DOCTYPE html>

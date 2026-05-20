@@ -9,62 +9,152 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'peserta') {
 
 $user_id_sekarang = $_SESSION['user_id'];
 
-// Ambil Periode Aktif
-$q_set = mysqli_query($conn, "SELECT active_period FROM system_settings LIMIT 1");
-$settings = mysqli_fetch_assoc($q_set);
-$active_period = $settings['active_period'] ?? 1;
+$q_set = mysqli_query($conn, "
+    SELECT active_period, period_status
+    FROM system_settings
+    LIMIT 1
+");
 
-// UPDATE LOGIKA: Kolom valuasi menyesuaikan struktur baru
+$setting = mysqli_fetch_assoc($q_set);
+
+$active_period = (int)$setting['active_period'];
+$period_status = $setting['period_status'];
+
 $kolom_val = "value_p" . $active_period;
 
-// ARRAY KOSONG UNTUK MENAMPUNG PERINGKAT
 $leaderboard = [];
 
-// 1. Ambil semua user yang sudah assessment
-$q_users = mysqli_query($conn, "SELECT id, username, nama_lengkap, balance FROM users WHERE role='peserta' AND is_assessment_done=1");
+$q_users = mysqli_query($conn, "
+    SELECT
+        u.id,
+        u.nama_lengkap,
+        u.balance,
+
+        f.total_aset,
+        f.total_utang,
+        f.up_dplk,
+        f.up_bpjs,
+        f.up_company,
+        f.monthly_expense,
+
+        COALESCE(p.nilai_portofolio, 0) AS nilai_portofolio
+
+    FROM users u
+
+    JOIN financial_assessment f
+        ON u.id = f.user_id
+
+    LEFT JOIN (
+        SELECT
+            x.user_id,
+            SUM(x.sisa_unit * ma.`$kolom_val`) AS nilai_portofolio
+        FROM (
+            SELECT
+                user_id,
+                asset_id,
+                SUM(
+                    CASE
+                        WHEN type = 'buy' THEN qty
+                        WHEN type = 'sell' AND qty > 0 THEN -qty
+                        ELSE 0
+                    END
+                ) AS sisa_unit
+            FROM transactions
+            WHERE period <= '$active_period'
+            GROUP BY user_id, asset_id
+        ) x
+
+        JOIN market_assets ma
+            ON x.asset_id = ma.id
+
+        WHERE x.sisa_unit > 0
+
+        GROUP BY x.user_id
+    ) p
+        ON u.id = p.user_id
+
+    WHERE
+        u.role = 'peserta'
+        AND u.is_assessment_done = 1
+");
 
 while ($u = mysqli_fetch_assoc($q_users)) {
-    $uid = $u['id'];
-    $portfolio_value = 0;
 
-    // 2. Hitung nilai aset user ini berdasarkan valuasi periode aktif
-    $q_port = mysqli_query($conn, "
-        SELECT 
-            a.tipe_simulasi,
-            a.$kolom_val AS val_now,
-            SUM(CASE WHEN t.type = 'buy' THEN t.qty ELSE 0 END) - SUM(CASE WHEN t.type = 'sell' THEN t.qty ELSE 0 END) AS total_unit
-        FROM transactions t
-        JOIN market_assets a ON t.asset_id = a.id
-        WHERE t.user_id = '$uid'
-        GROUP BY a.id
-        HAVING total_unit > 0.0001
-    ");
+    $modal_awal =
+        (
+            floatval($u['total_aset'])
+            -
+            floatval($u['total_utang'])
+        )
+        +
+        floatval($u['up_dplk'])
+        +
+        floatval($u['up_bpjs'])
+        +
+        floatval($u['up_company']);
 
-    while ($pt = mysqli_fetch_assoc($q_port)) {
-        if ($pt['tipe_simulasi'] == 'persentase') {
-            // Jika deposito, obligasi, dll (persentase) -> unit = nominal uang
-            $portfolio_value += $pt['total_unit'];
-        } else {
-            // Jika saham, emas, bisnis -> unit x harga_sekarang
-            $portfolio_value += ($pt['total_unit'] * $pt['val_now']);
-        }
+    $pengeluaran =
+        floatval($u['monthly_expense'])
+        *
+        24
+        *
+        max(0, ($active_period - 1));
+
+    $saldo_tunai = floatval($u['balance']);
+    $nilai_portofolio = floatval($u['nilai_portofolio']);
+
+    /*
+        Nilai akhir dipakai hanya untuk menghitung profit.
+        Yang ditampilkan tetap profit dan return profit, bukan total harta.
+    */
+    $nilai_akhir = $saldo_tunai + $nilai_portofolio;
+
+    $profit_bersih =
+        $nilai_akhir
+        -
+        $modal_awal
+        +
+        $pengeluaran;
+
+    $return_percent = 0;
+
+    if ($modal_awal > 0) {
+        $return_percent = ($profit_bersih / $modal_awal) * 100;
     }
 
-    // 3. Total Kekayaan/Profit = Saldo Uang + Nilai Aset Portofolio
-    $total_wealth = $u['balance'] + $portfolio_value;
-    
-    // Masukkan ke array
     $leaderboard[] = [
         'id' => $u['id'],
         'nama' => $u['nama_lengkap'],
-        'wealth' => $total_wealth
+        'profit' => $profit_bersih,
+        'return' => $return_percent
     ];
 }
 
-// 4. Sorting Array berdasarkan Total Kekayaan (Descending/Terbesar ke Terkecil)
-usort($leaderboard, function($a, $b) {
-    return $b['wealth'] <=> $a['wealth'];
+usort($leaderboard, function ($a, $b) {
+    return $b['return'] <=> $a['return'];
 });
+
+$judul =
+    (
+        $active_period >= 3
+        &&
+        $period_status == 'closed'
+    )
+    ?
+    "Final Ranking Simulasi"
+    :
+    "Ranking Profit Investasi";
+
+$subjudul =
+    (
+        $active_period >= 3
+        &&
+        $period_status == 'closed'
+    )
+    ?
+    "Berdasarkan Return Profit (%) dan Profit Bersih"
+    :
+    "Berdasarkan Return Profit (%) • Periode Berjalan";
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -129,12 +219,20 @@ usort($leaderboard, function($a, $b) {
                         </h6>
                     </div>
                 </div>
-                <div class="text-end">
-                    <small class="d-block" style="font-size: 0.7rem; opacity: 0.8;">Total Aset (Profit)</small>
-                    <span class="fw-bold <?php echo ($rank <= 2) ? 'text-dark' : 'text-success'; ?>">
-                        Rp <?php echo number_format($peserta['wealth'], 0, ',', '.'); ?>
-                    </span>
-                </div>
+<div class="text-end">
+    <small class="d-block" style="font-size: 0.7rem; opacity: 0.8;">
+        Return Profit
+    </small>
+
+    <div class="fw-bold <?php echo ($peserta['return'] >= 0) ? (($rank <= 2) ? 'text-dark' : 'text-success') : 'text-danger'; ?>">
+        <?php echo number_format($peserta['return'], 2, ',', '.'); ?>%
+    </div>
+
+    <small class="<?php echo ($peserta['profit'] >= 0) ? (($rank <= 2) ? 'text-dark' : 'text-success') : 'text-danger'; ?>">
+        <?php echo ($peserta['profit'] >= 0) ? '+ ' : '- '; ?>
+        Rp <?php echo number_format(abs($peserta['profit']), 0, ',', '.'); ?>
+    </small>
+</div>
             </div>
         </div>
         <?php $rank++; endforeach; ?>

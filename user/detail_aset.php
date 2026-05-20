@@ -34,6 +34,32 @@ $q_user = mysqli_query($conn, "SELECT balance FROM users WHERE id = '$user_id'")
 $user_data = mysqli_fetch_assoc($q_user);
 $saldo_sekarang = floatval($user_data['balance']);
 
+// ========================================================
+// CEK APAKAH ADA LABA BISNIS/PROPERTI YANG BELUM DIKLAIM
+// ========================================================
+$tampilkan_popup_bisnis = false;
+$unclaimed_yield = 0;
+$sisa_unit_bisnis = 0;
+$val_jual_sekarang = 0;
+
+if ($asset['tipe_simulasi'] == 'bisnis' && $active_period > 1) {
+    $target_p = $active_period - 1;
+    // Cek di database, apakah user sudah mengklaim laba periode ini?
+    $q_cek_laba = mysqli_query($conn, "SELECT id FROM transactions WHERE user_id='$user_id' AND asset_id='$asset_id' AND type='sell' AND qty=0 AND buy_period='$target_p'");
+    
+    if (mysqli_num_rows($q_cek_laba) == 0) {
+        $q_modal_bisnis = mysqli_query($conn, "SELECT SUM(CASE WHEN type='buy' THEN qty ELSE 0 END) - SUM(CASE WHEN type='sell' AND qty > 0 THEN qty ELSE 0 END) AS sisa_unit FROM transactions WHERE user_id='$user_id' AND asset_id='$asset_id' AND period <= '$target_p'");
+        $sisa_unit_bisnis = floatval(mysqli_fetch_assoc($q_modal_bisnis)['sisa_unit']);
+        
+        if ($sisa_unit_bisnis > 0) {
+            $tampilkan_popup_bisnis = true;
+            $unclaimed_yield = $sisa_unit_bisnis * floatval($asset['laba_p' . $target_p]);
+            $val_jual_sekarang = $sisa_unit_bisnis * floatval($asset['val_now']);
+        }
+    }
+}
+// ========================================================
+
 // 4. Hitung Unit yang Dimiliki (Untuk Validasi Jual)
 // Hitung apakah punya modal lama dari periode sebelumnya (khusus persentase)
 $sisa_pokok_lama = 0;
@@ -609,6 +635,69 @@ if(result.isConfirmed) {
             }
         });
     });
+</script>
+<?php endif; ?>
+<?php if ($tampilkan_popup_bisnis): ?>
+<form id="formKeputusanBisnis" action="proses_bisnis.php" method="POST" style="display: none;">
+    <input type="hidden" name="asset_id" value="<?php echo $asset_id; ?>">
+    <input type="hidden" name="keputusan" id="keputusanBisnis" value="">
+</form>
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    Swal.fire({
+        title: 'Keputusan Bisnis',
+        icon: 'question',
+        html: `
+            <div class="text-start" style="font-size: 0.95rem;">
+                <p>Bisnis <b><?php echo $asset['nama_aset']; ?></b> Anda telah memberikan imbal hasil / laba periode ini.</p>
+                <table class="table table-sm">
+                    <tr>
+                        <td>Imbal Hasil Didapat</td>
+                        <td class="text-success text-end fw-bold">+ Rp <?php echo number_format($unclaimed_yield, 0, ',', '.'); ?></td>
+                    </tr>
+                    <tr>
+                        <td>Harga Jual Saat Ini</td>
+                        <td class="text-primary text-end fw-bold">Rp <?php echo number_format($val_jual_sekarang, 0, ',', '.'); ?></td>
+                    </tr>
+                </table>
+                <p class="mb-0 text-danger fw-bold text-center mt-3">Apakah Anda ingin tetap menahan bisnis ini atau menjualnya?</p>
+            </div>
+        `,
+        showDenyButton: true,
+        confirmButtonText: 'Tahan & Ambil Laba',
+        denyButtonText: 'Jual Semua',
+        allowOutsideClick: false,
+        allowEscapeKey: false,
+        confirmButtonColor: '#0d6efd', 
+        denyButtonColor: '#dc3545'     
+    }).then((result) => {
+        if (result.isConfirmed) {
+            // Loading Tahan & Ambil Laba
+            document.getElementById('keputusanBisnis').value = 'hold';
+            Swal.fire({
+                title: 'Memproses Laba...',
+                html: 'Mohon tunggu sebentar',
+                allowOutsideClick: false,
+                showConfirmButton: false,
+                didOpen: () => { Swal.showLoading(); }
+            });
+            setTimeout(() => { document.getElementById('formKeputusanBisnis').submit(); }, 400);
+
+        } else if (result.isDenied) {
+            // Loading Jual Semua
+            document.getElementById('keputusanBisnis').value = 'sell';
+            Swal.fire({
+                title: 'Memproses Penjualan...',
+                html: 'Mohon tunggu sebentar',
+                allowOutsideClick: false,
+                showConfirmButton: false,
+                didOpen: () => { Swal.showLoading(); }
+            });
+            setTimeout(() => { document.getElementById('formKeputusanBisnis').submit(); }, 400);
+        }
+    });
+});
 </script>
 <?php endif; ?>
 </body>

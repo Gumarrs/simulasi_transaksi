@@ -164,19 +164,24 @@ while($d = mysqli_fetch_assoc($q_detail)) {
         ];
     }
 
-    // CAIR PROFIT DEPOSITO (Tipe Sell tapi QTY = 0)
-        if($d['type'] == 'sell' && floatval($d['qty']) == 0 && $d['tipe_simulasi'] == 'persentase') {
-            
-            $history_detail[$period]['profit_total'] += $d['realized_profit'];
-            
-            // Membaca langsung periode kepemilikan aset dari database
-            $p_profit = $d['buy_period']; 
-            
-            $history_detail[$period]['sell_items'][] = [
-                'aset' => $d['nama_aset'] . ' (Pencairan Profit Periode ' . $p_profit . ')',
-                'nominal' => $d['amount_money']
-            ];
+// CAIR PROFIT DEPOSITO / LABA BISNIS (Tipe Sell tapi QTY = 0)
+    elseif($d['type'] == 'sell' && floatval($d['qty']) == 0) {
+        
+        $history_detail[$period]['profit_total'] += $d['realized_profit'];
+        $p_profit = $d['buy_period']; 
+        
+        // Pembedaan Nama Label berdasarkan Tipe Simulasi
+        if ($d['tipe_simulasi'] == 'bisnis') {
+            $label_aset = 'Laba Bisnis ' . $d['nama_aset'] . ' (Periode ' . $p_profit . ')';
+        } else {
+            $label_aset = 'Pencairan Profit ' . $d['nama_aset'] . ' (Periode ' . $p_profit . ')';
         }
+        
+        $history_detail[$period]['sell_items'][] = [
+            'aset' => $label_aset,
+            'nominal' => $d['amount_money']
+        ];
+    }
     
     // SELL NORMAL (Jual Pokok Aset / Saham)
     elseif($d['type'] == 'sell' && floatval($d['qty']) > 0) {
