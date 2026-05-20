@@ -71,28 +71,25 @@ $query_portfolio = mysqli_query($conn, "
 
         SUM(
             CASE
-                WHEN t.type='buy'
-                THEN t.qty
-                ELSE -t.qty
+                WHEN t.type='buy' THEN t.qty
+                WHEN t.type='sell' THEN -t.qty
+                ELSE 0
             END
         ) AS total_unit,
 
         SUM(
             CASE
-                WHEN t.type='buy'
-                THEN t.qty * t.buy_price
-
-                WHEN t.type='sell'
-                THEN -(t.qty * t.buy_price)
-
+                WHEN t.type='buy' AND a.tipe_simulasi='persentase' THEN t.amount_money
+                WHEN t.type='sell' AND a.tipe_simulasi='persentase' AND t.qty > 0 THEN -t.amount_money
+                WHEN t.type='buy' THEN t.qty * t.buy_price
+                WHEN t.type='sell' THEN -(t.qty * t.buy_price)
                 ELSE 0
             END
         ) AS total_modal_aktif,
 
         MAX(
             CASE
-                WHEN t.type='buy'
-                THEN t.buy_period
+                WHEN t.type='buy' THEN t.buy_period
                 ELSE 0
             END
         ) AS last_buy_period
@@ -102,22 +99,7 @@ $query_portfolio = mysqli_query($conn, "
     JOIN market_assets a
         ON t.asset_id = a.id
 
-    WHERE
-        t.user_id = '$user_id'
-
-        AND (
-
-            a.tipe_simulasi != 'persentase'
-
-            OR (
-
-                a.tipe_simulasi = 'persentase'
-                AND t.type = 'buy'
-                AND t.is_processed = 0
-                AND t.buy_period = '$active_period'
-
-            )
-        )
+    WHERE t.user_id = '$user_id'
 
     GROUP BY a.id
 
@@ -125,10 +107,6 @@ $query_portfolio = mysqli_query($conn, "
 
 ");
 
-
-// ======================================
-// HISTORY TRANSAKSI PER PERIODE
-// ======================================
 
 // ======================================
 // DETAIL TRANSAKSI PER PERIODE
@@ -142,9 +120,11 @@ $q_detail = mysqli_query($conn, "
 
         t.period,
         t.type,
+        t.qty,
         t.amount_money,
         t.realized_profit,
-        a.nama_aset
+        a.nama_aset,
+        a.tipe_simulasi
 
     FROM transactions t
 
@@ -183,8 +163,19 @@ while($d = mysqli_fetch_assoc($q_detail)) {
         ];
     }
 
-    // SELL
-    if($d['type'] == 'sell') {
+    // CAIR PROFIT DEPOSITO (Tipe Sell tapi QTY = 0)
+    if($d['type'] == 'sell' && floatval($d['qty']) == 0 && $d['tipe_simulasi'] == 'persentase') {
+        
+        $history_detail[$period]['profit_total'] += $d['realized_profit'];
+        
+        $history_detail[$period]['sell_items'][] = [
+            'aset' => $d['nama_aset'] . ' (Pencairan Profit)',
+            'nominal' => $d['amount_money']
+        ];
+    }
+    
+    // SELL NORMAL (Jual Pokok Aset / Saham)
+    elseif($d['type'] == 'sell' && floatval($d['qty']) > 0) {
 
         $history_detail[$period]['sell_total'] += $d['amount_money'];
 

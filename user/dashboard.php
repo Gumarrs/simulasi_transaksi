@@ -52,6 +52,7 @@ $period_status = $settings['period_status'] ?? 'closed';
 $end_time = $settings['end_time'];
 
 // Hitung sisa detik
+date_default_timezone_set('Asia/Jakarta');
 $sisa_waktu_detik = 0;
 if (!empty($end_time) && $period_status == 'open') {
     $sisa_waktu_detik = strtotime($end_time) - time();
@@ -291,42 +292,20 @@ async function showDepositoNotif() {
         await Swal.fire({
             icon: 'success',
             title: 'Investasi Jatuh Tempo',
-            html: `
-                <div style="text-align:left">
-
-                    <p>
-                        Investasi <b>${item.aset}</b> telah selesai.
-                    </p>
-
-                    <hr>
-
-                    <table style="width:100%">
-                        <tr>
-                            <td>Modal Awal</td>
-                            <td align="right">
-                                Rp ${Number(item.modal).toLocaleString('id-ID')}
-                            </td>
-                        </tr>
-
-                        <tr>
-                            <td>Bunga Diterima</td>
-                            <td align="right" style="color:green">
-                                + Rp ${Number(item.nominal_bunga).toLocaleString('id-ID')}
-                            </td>
-                        </tr>
-
-                        <tr>
-                            <td><b>Total Pencairan</b></td>
-                            <td align="right">
-                                <b>
-                                    Rp ${Number(item.total).toLocaleString('id-ID')}
-                                </b>
-                            </td>
-                        </tr>
-                    </table>
-
-                </div>
-            `,
+html: `
+            <div style="text-align:left">
+                <p>Profit Investasi <b>${item.aset}</b> telah cair. Pokok investasi tetap utuh di portofolio Anda.</p>
+                <hr>
+                <table style="width:100%">
+                    <tr>
+                        <td>Bunga/Profit Diterima</td>
+                        <td align="right" style="color:green">
+                            + Rp ${Number(item.nominal_bunga).toLocaleString('id-ID')}
+                        </td>
+                    </tr>
+                </table>
+            </div>
+        `,
             confirmButtonText: 'OK'
         });
 

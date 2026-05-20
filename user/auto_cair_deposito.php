@@ -111,8 +111,7 @@ while ($d = mysqli_fetch_assoc($q_deposito)) {
     $nominal_bunga =
         $modal_awal * ($persentase_bunga / 100);
 
-    $total_pencairan =
-        $modal_awal + $nominal_bunga;
+    $total_pencairan = $nominal_bunga;
 
 
     // ==========================================
@@ -142,29 +141,14 @@ while ($d = mysqli_fetch_assoc($q_deposito)) {
     // ==========================================
 
     mysqli_query($conn, "
-        INSERT INTO transactions
+INSERT INTO transactions
         (
-            user_id,
-            asset_id,
-            period,
-            type,
-            amount_money,
-            qty,
-            buy_price,
-            buy_period
+            user_id, asset_id, period, type, amount_money, qty, buy_price, buy_period, realized_profit
         )
         VALUES
         (
-            '$user_id',
-            '$asset_id',
-            '$active_period',
-            'sell',
-            '$total_pencairan',
-            '$qty',
-            '0',
-            '$buy_period'
-        )
-    ");
+            '$user_id', '$asset_id', '$active_period', 'sell', '$total_pencairan', '0', '0', '$buy_period', '$nominal_bunga'
+        )");
 
 
     // ==========================================

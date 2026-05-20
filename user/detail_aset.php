@@ -35,6 +35,18 @@ $user_data = mysqli_fetch_assoc($q_user);
 $saldo_sekarang = floatval($user_data['balance']);
 
 // 4. Hitung Unit yang Dimiliki (Untuk Validasi Jual)
+// Hitung apakah punya modal lama dari periode sebelumnya (khusus persentase)
+$sisa_pokok_lama = 0;
+if ($asset['tipe_simulasi'] == 'persentase') {
+    $q_old_buy = mysqli_query($conn, "SELECT SUM(qty) as sum_buy FROM transactions WHERE user_id='$user_id' AND asset_id='$asset_id' AND type='buy' AND buy_period < '$active_period'");
+    $old_buy = mysqli_fetch_assoc($q_old_buy)['sum_buy'] ?? 0;
+    
+    $q_all_sell = mysqli_query($conn, "SELECT SUM(qty) as sum_sell FROM transactions WHERE user_id='$user_id' AND asset_id='$asset_id' AND type='sell'");
+    $all_sell = mysqli_fetch_assoc($q_all_sell)['sum_sell'] ?? 0;
+    
+    $sisa_pokok_lama = $old_buy - $all_sell;
+}
+
 $q_own = mysqli_query($conn, "SELECT SUM(CASE WHEN type='buy' THEN qty ELSE 0 END) - SUM(CASE WHEN type='sell' THEN qty ELSE 0 END) AS sisa FROM transactions WHERE user_id='$user_id' AND asset_id='$asset_id'");
 $own = mysqli_fetch_assoc($q_own);
 $multiplier = (int)$asset['multiplier'];
@@ -540,5 +552,64 @@ if(result.isConfirmed) {
 
 </div>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<?php if ($sisa_pokok_lama > 0): ?>
+
+<form id="formAutoJual" action="proses_transaksi.php" method="POST" style="display: none;">
+    <input type="hidden" name="asset_id" value="<?php echo $asset_id; ?>">
+    <input type="hidden" name="tipe" value="sell">
+    <input type="hidden" name="nominal" value="<?php echo $sisa_pokok_lama; ?>">
+    <input type="hidden" name="qty" value="<?php echo $sisa_pokok_lama; ?>"> 
+</form>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        // POPUP PERTAMA (Pemberitahuan Aset Hold/Jual)
+        Swal.fire({
+            title: 'Pemberitahuan Aset',
+            html: 'Anda masih mempunyai modal <b><?php echo $asset["nama_aset"]; ?></b> dari periode sebelumnya senilai <b>Rp <?php echo number_format($sisa_pokok_lama,0,",","."); ?></b>.<br><br>Profitnya sudah otomatis cair. Apakah Anda ingin tetap memegang (Hold) pokok ini atau menjualnya sekarang?',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Jual Pokok',
+            cancelButtonText: 'Tetap Hold',
+            reverseButtons: true,
+            allowOutsideClick: false // User tidak bisa klik sembarang di luar box
+        }).then((result) => {
+            if (result.isConfirmed) {
+                
+                // POPUP KEDUA (Konfirmasi Kepastian Jual)
+                Swal.fire({
+                    title: 'Konfirmasi Jual Pokok',
+                    html: 'Anda akan menjual aset <b><?php echo $asset["nama_aset"]; ?></b> dengan nilai <b>Rp <?php echo number_format($sisa_pokok_lama,0,",","."); ?></b>.<br><br>Apakah Anda yakin?',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: 'Ya, Jual Sekarang',
+                    cancelButtonText: 'Batal (Tetap Hold)',
+                    confirmButtonColor: '#dc3545', // Warna merah untuk tombol jual
+                    reverseButtons: true,
+                    allowOutsideClick: false
+                }).then((resultConfirm) => {
+                    if (resultConfirm.isConfirmed) {
+                        
+                        // POPUP KETIGA (Loading Screen)
+                        Swal.fire({
+                            title: 'Memproses Penjualan...',
+                            html: 'Mohon tunggu sebentar',
+                            allowOutsideClick: false,
+                            showConfirmButton: false,
+                            didOpen: () => {
+                                Swal.showLoading();
+                            }
+                        });
+
+                        // Eksekusi submit form tersembunyi
+                        document.getElementById('formAutoJual').submit();
+                    }
+                });
+                
+            }
+        });
+    });
+</script>
+<?php endif; ?>
 </body>
 </html>
