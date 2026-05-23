@@ -391,5 +391,47 @@ setTimeout(showForceSellNotif, 500); // delay dikit agar tidak bentrok dengan no
 </script>
 <?php unset($_SESSION['force_sell_notifications']); ?>
 <?php endif; ?>
+<?php if(!empty($_SESSION['edukasi_notifications'])): ?>
+<script>
+const edukasiNotif = <?php echo json_encode($_SESSION['edukasi_notifications']); ?>;
+let indexEdu = 0;
+
+function showEdukasiNotif() {
+    if (indexEdu >= edukasiNotif.length) return;
+    const item = edukasiNotif[indexEdu];
+    indexEdu++;
+
+    Swal.fire({
+        title: 'Manfaat Pendidikan',
+        icon: 'success',
+        html: `
+            <div style="text-align:left">
+                <p>Pendidikan <b>${item.aset}</b> yang Anda ambil telah meningkatkan penghasilan Anda!</p>
+                <hr>
+                <table style="width:100%">
+                    <tr>
+                        <td>Peningkatan Penghasilan</td>
+                        <td align="right" style="color:green; font-weight:bold;">
+                            + Rp ${Number(item.benefit).toLocaleString('id-ID')}
+                        </td>
+                    </tr>
+                </table>
+                <p class="mt-3 mb-0 text-danger" style="font-size:0.8rem;">
+                    <i>* Dana awal pendidikan hangus dan status pendidikan telah diselesaikan.</i>
+                </p>
+            </div>
+        `,
+        confirmButtonText: 'Luar Biasa!',
+        allowOutsideClick: false
+    }).then(() => {
+        showEdukasiNotif(); 
+    });
+}
+
+// Delay 1.2 detik agar tidak bertabrakan dengan popup deposito (jika ada)
+setTimeout(showEdukasiNotif, 1200); 
+</script>
+<?php unset($_SESSION['edukasi_notifications']); ?>
+<?php endif; ?>
 </body>
 </html>

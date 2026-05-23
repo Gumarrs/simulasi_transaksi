@@ -223,7 +223,11 @@ if (
 }
 ?>
     <div class="sticky-bottom d-flex gap-2">
-<?php if($asset['tipe_simulasi'] != 'persentase'): ?>
+<?php if(
+    $asset['tipe_simulasi'] != 'persentase'
+    &&
+    $asset['tipe_simulasi'] != 'edukasi'
+): ?>
 
 <button 
     class="btn btn-outline-danger w-50 fw-bold py-2"
@@ -235,7 +239,19 @@ if (
 
 <?php endif; ?>
 <button 
-    class="btn btn-success <?php echo ($asset['tipe_simulasi'] != 'persentase') ? 'w-50' : 'w-100'; ?> fw-bold py-2" 
+    class="btn btn-success 
+    <?php
+    if (
+        $asset['tipe_simulasi'] == 'persentase'
+        ||
+        $asset['tipe_simulasi'] == 'edukasi'
+    ) {
+        echo 'w-100';
+    } else {
+        echo 'w-50';
+    }
+    ?>
+    fw-bold py-2" 
     onclick="openModal('buy')" 
     <?php echo $is_disabled; ?>
 >
@@ -287,41 +303,89 @@ if (
                             </button>
                         <?php endfor; ?>
 
- <?php else: ?>
+<?php else: ?>
 
-    <?php if($asset['tipe_simulasi'] == 'bisnis'): ?>
+<?php if($asset['tipe_simulasi']=='edukasi'): ?>
 
-        <?php for($i=1; $i<=10; $i++): ?>
-            <button 
-                type="button" 
-                class="chip-btn" 
-                onclick="selectQty(<?php echo $i; ?>, this)"
-            >
-                <?php echo $i; ?>
-            </button>
-        <?php endfor; ?>
+<button
+type="button"
+class="chip-btn active"
+disabled
+>
+1
+</button>
 
-    <?php else: ?>
+<?php elseif($asset['tipe_simulasi']=='bisnis'): ?>
 
-        <?php for($i=100; $i<=1000; $i+=100): ?>
-            <button 
-                type="button" 
-                class="chip-btn" 
-                onclick="selectQty(<?php echo $i; ?>, this)"
-            >
-                <?php echo $i; ?>
-            </button>
-        <?php endfor; ?>
+<?php for($i=1;$i<=10;$i++): ?>
 
-    <?php endif; ?>
+<button
+type="button"
+class="chip-btn"
+onclick="selectQty(<?php echo $i; ?>,this)"
+>
+
+<?php echo $i; ?>
+
+</button>
+
+<?php endfor; ?>
+
+<?php else: ?>
+
+<?php for($i=100;$i<=1000;$i+=100): ?>
+
+<button
+type="button"
+class="chip-btn"
+onclick="selectQty(<?php echo $i; ?>,this)"
+>
+
+<?php echo $i; ?>
+
+</button>
+
+<?php endfor; ?>
+
+<?php endif; ?>
 
 <?php endif; ?>
 
                 </div>
 
                     <div class="mb-3">
-                        <input type="number" id="manualQty" class="form-control form-control-lg text-center fw-bold" placeholder="Input Manual" onkeyup="calc()">
-                    </div>
+                <input
+                type="number"
+
+                id="manualQty"
+
+                class="
+                form-control
+                form-control-lg
+                text-center
+                fw-bold
+                "
+
+                placeholder="Input Manual"
+
+                onkeyup="calc()"
+
+                <?php
+
+                if(
+                $asset['tipe_simulasi']=='edukasi'
+                ){
+
+                ?>
+
+                value="1"
+
+                readonly
+
+                <?php } ?>
+
+                >
+            </div>
 
                     <div class="text-center py-2">
                         <small class="text-muted">Total Bayar/Terima:</small>
@@ -372,12 +436,39 @@ const cash = <?php echo $saldo_sekarang; ?>;
 const stock = <?php echo $total_unit_dimiliki; ?>; // stock is Nominal (Rp) if persentase, Unit if others
 
 function openModal(tipe) {
+
     document.getElementById('tipeInput').value = tipe;
-    document.getElementById('modalTitle').innerText = (tipe == 'buy' ? 'Beli ' : 'Jual ') + '<?php echo $asset['nama_aset']; ?>';
-    const btn = document.getElementById('confirmBtn');
-    btn.className = (tipe == 'buy') ? 'btn btn-success w-100 fw-bold' : 'btn btn-danger w-100 fw-bold';
-    btn.innerText = (tipe == 'buy') ? 'KONFIRMASI BELI' : 'KONFIRMASI JUAL';
-    new bootstrap.Modal(document.getElementById('tradeModal')).show();
+
+    document.getElementById('modalTitle').innerText =
+        (tipe == 'buy' ? 'Beli ' : 'Jual ')
+        + '<?php echo $asset['nama_aset']; ?>';
+
+    const btn =
+        document.getElementById('confirmBtn');
+
+    btn.className =
+        (tipe == 'buy')
+        ? 'btn btn-success w-100 fw-bold'
+        : 'btn btn-danger w-100 fw-bold';
+
+    btn.innerText =
+        (tipe == 'buy')
+        ? 'KONFIRMASI BELI'
+        : 'KONFIRMASI JUAL';
+
+    new bootstrap.Modal(
+        document.getElementById('tradeModal')
+    ).show();
+
+    // KHUSUS EDUKASI LANGSUNG HITUNG
+    if(tipeSim==='edukasi'){
+
+        document.getElementById('manualQty').value=1;
+
+        calc();
+
+    }
+
 }
 
 function selectQty(q, el) {
@@ -391,10 +482,24 @@ function calc() {
     const q = parseFloat(document.getElementById('manualQty').value) || 0;
     let total = 0;
     
-    if(tipeSim === 'persentase') {
-        total = q; // Untuk deposito, q yang diinput langsung menjadi total Rupiah
-    } else {
-        total = q * mult * price; // Logika orisinal untuk saham/emas/properti
+    if(
+    tipeSim==='persentase'
+    ){
+
+    total=q;
+
+    }
+    else if(
+    tipeSim==='edukasi'
+    ){
+
+    total=price;
+
+    }
+    else{
+
+    total=q*mult*price;
+
     }
     
     const tipe = document.getElementById('tipeInput').value;

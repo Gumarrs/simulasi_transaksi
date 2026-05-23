@@ -109,6 +109,129 @@ while ($asset = mysqli_fetch_assoc($q_assets)) {
 // B. AUTO JUAL SEMUA ASET SAAT SIMULASI SELESAI (STATUS = CLOSED)
 // ====================================================================
 
+// ====================================================================
+// EDUKASI (1X BENEFIT PER PERIODE BERIKUTNYA)
+// ====================================================================
+
+$q_edukasi =
+mysqli_query(
+$conn,
+"
+SELECT *
+FROM market_assets
+WHERE tipe_simulasi='edukasi'
+"
+);
+
+while(
+$asset=
+mysqli_fetch_assoc(
+$q_edukasi
+)
+){
+
+$asset_id=
+$asset['id'];
+
+if(
+$active_period<=1
+){
+
+continue;
+
+}
+
+// target periode sebelumnya
+
+$target_p=
+$active_period-1;
+
+
+// CEK APAKAH BENEFIT SUDAH PERNAH MASUK
+
+$q_cek=
+mysqli_query(
+$conn,
+"
+SELECT id
+FROM transactions
+WHERE
+user_id='$user_id'
+AND asset_id='$asset_id'
+AND type='sell'
+AND qty=0
+AND buy_period='$target_p'
+LIMIT 1
+"
+);
+
+if(
+mysqli_num_rows(
+$q_cek
+)>0
+){
+
+continue;
+
+}
+
+
+// CEK ADA PEMBELIAN EDUKASI PERIODE TARGET
+// CEK ADA PEMBELIAN EDUKASI PERIODE TARGET
+$q_buy=
+mysqli_query(
+$conn,
+"
+SELECT id, amount_money, qty, buy_price
+FROM transactions
+WHERE
+user_id='$user_id' AND asset_id='$asset_id' AND type='buy' AND buy_period='$target_p' AND is_active=1
+LIMIT 1
+"
+);
+
+if(mysqli_num_rows($q_buy)==0){
+    continue;
+}
+
+$buy=mysqli_fetch_assoc($q_buy);
+$qty_beli = floatval($buy['qty']);
+$harga_beli = floatval($buy['buy_price']);
+
+// ambil benefit
+$benefit=floatval($asset['laba_p'.$target_p]);
+
+if($benefit<=0){
+    continue;
+}
+
+// tambah saldo (profit cair)
+mysqli_query($conn, "UPDATE users SET balance=balance+$benefit WHERE id='$user_id'");
+
+// catat histori profit masuk
+mysqli_query($conn, "
+    INSERT INTO transactions (user_id, asset_id, period, type, amount_money, qty, buy_price, realized_profit, buy_period)
+    VALUES ('$user_id', '$asset_id', '$active_period', 'sell', '$benefit', 0, 0, '$benefit', '$target_p')
+");
+
+// [LOGIKA BARU EDUKASI] catat histori HANGUS POKOK agar unit hilang dari portofolio
+mysqli_query($conn, "
+    INSERT INTO transactions (user_id, asset_id, period, type, amount_money, qty, buy_price, realized_profit, buy_period)
+    VALUES ('$user_id', '$asset_id', '$active_period', 'sell', 0, '$qty_beli', '$harga_beli', 0, '$target_p')
+");
+
+// hapus aset pendidikan
+mysqli_query($conn, "UPDATE transactions SET is_active=0 WHERE id='".$buy['id']."'");
+
+// notifikasi
+$_SESSION['edukasi_notifications'][]=[
+    'aset'=> $asset['nama_aset'],
+    'benefit'=> $benefit,
+    'periode'=> $target_p
+];
+
+}   
+
 if ($period_status == 'closed') {
     
     $q_all_assets = mysqli_query($conn, "SELECT * FROM market_assets");

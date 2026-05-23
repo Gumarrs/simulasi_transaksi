@@ -171,11 +171,38 @@ while($d = mysqli_fetch_assoc($q_detail)) {
         $p_profit = $d['buy_period']; 
         
         // Pembedaan Nama Label berdasarkan Tipe Simulasi
-        if ($d['tipe_simulasi'] == 'bisnis') {
-            $label_aset = 'Laba Bisnis ' . $d['nama_aset'] . ' (Periode ' . $p_profit . ')';
-        } else {
-            $label_aset = 'Pencairan Profit ' . $d['nama_aset'] . ' (Periode ' . $p_profit . ')';
-        }
+    if ($d['tipe_simulasi'] == 'bisnis')
+    {
+
+        $label_aset=
+        'Laba Bisnis '
+        .$d['nama_aset']
+        .' (Periode '
+        .$p_profit.
+        ')';
+
+    }
+    elseif(
+    $d['tipe_simulasi']=='edukasi'
+    )
+    {
+
+        $label_aset=
+        'Penghasilan bertambah setelah investasi pendidikan anda di periode '
+        .$p_profit;
+
+    }
+    else
+    {
+
+        $label_aset=
+        'Pencairan Profit '
+        .$d['nama_aset']
+        .' (Periode '
+        .$p_profit.
+        ')';
+
+    }
         
         $history_detail[$period]['sell_items'][] = [
             'aset' => $label_aset,
@@ -277,7 +304,8 @@ $punya_history = !empty($history_detail);
         .asset-img {
             width: 50px;
             height: 50px;
-            object-fit: cover;
+            object-fit: contain; /* Mengubah dari cover menjadi contain agar gambar utuh */
+            background-color: #f8f9fa; /* Opsional: memberi warna latar jika gambar aslinya tidak kotak */
             border-radius: 8px;
         }
 
@@ -332,14 +360,29 @@ $punya_history = !empty($history_detail);
             <div class="list-group mb-4">
 
                 <?php while($row = mysqli_fetch_assoc($query_portfolio)): ?>
+                    <?php
+                    // [REVISI 1] Sembunyikan aset Edukasi jika modal aktifnya sudah 0 (sudah hangus/cair)
+                    if ($row['tipe_simulasi'] == 'edukasi' && floatval($row['total_modal_aktif']) <= 0) {
+                        continue;
+                    }
+                    ?>
 
                     <?php
+
+                    
 
                     // =====================================
                     // DEPOSITO
                     // =====================================
-
-                    if ($row['tipe_simulasi'] == 'persentase') {
+                    if ($row['tipe_simulasi'] == 'edukasi') {
+                        
+                        $nilai_sekarang = 0; // Ditahan agar tidak terlihat rugi -100%
+                        $label_unit = ""; // Kosong
+                        $selisih = 0;
+                        $persentase = 0;
+                        $laba_potensial = 0;
+                    }
+                    elseif ($row['tipe_simulasi'] == 'persentase') {
 
                         $modal_awal =
                             floatval($row['total_modal_aktif']);
@@ -374,8 +417,7 @@ $punya_history = !empty($history_detail);
                             $row['total_unit'] * $row['val_now'];
 
                         $label_unit =
-                            number_format($row['total_unit'], 4, ',', '.')
-                            . " Unit";
+                           
 
                         $modal_asli =
                             floatval($row['total_modal_aktif']);
@@ -428,7 +470,7 @@ $punya_history = !empty($history_detail);
                                     </h6>
 
                                     <small class="text-muted">
-                                        <?php echo $label_unit; ?>
+                                        
                                     </small>
 
                                 </div>

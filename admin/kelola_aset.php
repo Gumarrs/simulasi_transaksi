@@ -476,7 +476,7 @@ if (!$assets) {
               <div class="row g-3 mb-4">
                   <div class="col-md-5"><label class="small fw-bold">Nama Aset</label><input type="text" name="nama_aset" class="form-control" required></div>
                   <div class="col-md-2"><label class="small fw-bold">Kategori</label><select name="kategori" class="form-select"><option value="Paper">Paper</option><option value="Commodity">Commodity</option><option value="Real">Real</option></select></div>
-                  <div class="col-md-2"><label class="small fw-bold">Tipe Simulasi</label><select name="tipe_simulasi" class="form-select"><option value="market">Market</option><option value="persentase">Persentase</option><option value="bisnis">Bisnis</option><option value="proteksi">Proteksi</option></select></div>
+                  <div class="col-md-2"><label class="small fw-bold">Tipe Simulasi</label><select name="tipe_simulasi" class="form-select"><option value="market">Market</option><option value="persentase">Persentase</option><option value="bisnis">Bisnis</option><option value="edukasi">Edukasi</option><option value="proteksi">Proteksi</option></select></div>
                   <div class="col-md-2"><label class="small fw-bold">Satuan</label><input type="text" name="satuan" class="form-control" required></div>
                   <div class="col-md-1"><label class="small fw-bold">Multiplier</label><input type="number" name="multiplier" class="form-control" value="1" required></div>
                   <div class="col-md-12"><label class="small fw-bold">Gambar Thumbnail</label><input type="file" name="gambar" class="form-control"></div>
@@ -552,7 +552,7 @@ if (!$assets) {
               <div class="row g-3 mb-4">
                   <div class="col-md-5"><label class="small fw-bold">Nama Aset</label><input type="text" name="nama_aset" id="edit_nama" class="form-control" required></div>
                   <div class="col-md-2"><label class="small fw-bold">Kategori</label><select name="kategori" id="edit_kategori" class="form-select"><option value="Paper">Paper</option><option value="Commodity">Commodity</option><option value="Real">Real</option></select></div>
-                  <div class="col-md-2"><label class="small fw-bold">Tipe Simulasi</label><select name="tipe_simulasi" id="edit_tipe_simulasi" class="form-select"><option value="market">Market</option><option value="persentase">Persentase</option><option value="bisnis">Bisnis</option><option value="proteksi">Proteksi</option></select></div>
+                  <div class="col-md-2"><label class="small fw-bold">Tipe Simulasi</label><select name="tipe_simulasi" id="edit_tipe_simulasi" class="form-select"><option value="market">Market</option><option value="persentase">Persentase</option><option value="edukasi">Edukasi</option><option value="bisnis">Bisnis</option><option value="proteksi">Proteksi</option></select></div>
                   <div class="col-md-2"><label class="small fw-bold">Satuan</label><input type="text" name="satuan" id="edit_satuan" class="form-control" required></div>
                   <div class="col-md-1"><label class="small fw-bold">Multiplier</label><input type="number" name="multiplier" id="edit_multiplier" class="form-control" required></div>
                   <div class="col-md-12"><label class="small fw-bold">Ganti Gambar (Kosongkan jika tidak diubah)</label><input type="file" name="gambar" class="form-control"></div>

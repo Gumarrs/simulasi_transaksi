@@ -24,33 +24,8 @@ function rp($angka) {
 }
 
 // ======================================
-// AMBIL HISTORY INVESTASI
-// ======================================
-
-$q_laporan = mysqli_query($conn, "
-
-    SELECT
-        t.period,
-        t.type,
-        t.amount_money,
-        t.realized_profit,
-        a.nama_aset
-
-    FROM transactions t
-
-    JOIN market_assets a
-        ON t.asset_id = a.id
-
-    WHERE t.user_id = '$user_id'
-
-    ORDER BY t.period ASC
-
-");
-
-// ======================================
 // AMBIL PERIODE AKTIF
 // ======================================
-
 $q_setting = mysqli_query($conn, "
     SELECT active_period
     FROM system_settings
@@ -58,107 +33,69 @@ $q_setting = mysqli_query($conn, "
 ");
 
 $setting = mysqli_fetch_assoc($q_setting);
-
-$active_period =
-    intval($setting['active_period'] ?? 1);
-
+$active_period = intval($setting['active_period'] ?? 1);
 
 // ======================================
 // AMBIL HISTORY INVESTASI
 // ======================================
-
 $q_laporan = mysqli_query($conn, "
-
     SELECT
         t.period,
         t.type,
         t.amount_money,
         t.realized_profit,
         a.nama_aset
-
     FROM transactions t
-
     JOIN market_assets a
         ON t.asset_id = a.id
-
     WHERE t.user_id = '$user_id'
-
     ORDER BY t.period ASC
-
 ");
 
 $laporan = [];
-
 $total_profit_all = 0;
 
 while($r = mysqli_fetch_assoc($q_laporan)) {
-
     $p = $r['period'];
-
     if(!isset($laporan[$p])) {
-
         $laporan[$p] = [];
     }
-
     $laporan[$p][] = $r;
-
-    // TOTAL PROFIT REALIZED
     $total_profit_all += floatval($r['realized_profit']);
 }
-
 
 // ======================================
 // PERHITUNGAN HARTA AWAL
 // ======================================
+$total_aset = floatval($user['total_aset']);
+$total_utang = floatval($user['total_utang']);
+$net_worth_awal = $total_aset - $total_utang;
 
-// TOTAL ASET
-$total_aset =
-    floatval($user['total_aset']);
-
-// TOTAL UTANG
-$total_utang =
-    floatval($user['total_utang']);
-
-// NET WORTH AWAL
-$net_worth_awal =
-    $total_aset - $total_utang;
-
-
-// ======================================
 // TOTAL DANA PENSIUN
-// ======================================
+$total_dana_pensiun = floatval($user['up_dplk']) + floatval($user['up_bpjs']) + floatval($user['up_company']);
 
-$total_dana_pensiun =
-    floatval($user['up_dplk']) +
-    floatval($user['up_bpjs']) +
-    floatval($user['up_company']);
-
-
-// ======================================
 // TOTAL HARTA AWAL FINAL
-// ======================================
+$total_harta_awal = $net_worth_awal + $total_dana_pensiun;
 
-$total_harta_awal =
-    $net_worth_awal +
-    $total_dana_pensiun;
+// PENGELUARAN HIDUP (1 PERIODE = 2 TAHUN)
+$total_pengeluaran_hidup = floatval($user['monthly_expense']) * 24 * ($active_period - 1);
 
-
-// ======================================
-// PENGELUARAN HIDUP
-// 1 PERIODE = 2 TAHUN
-// ======================================
-
-$total_pengeluaran_hidup =
-    floatval($user['monthly_expense'])
-    * 24
-    * ($active_period - 1);
-
-
-// ======================================
 // SISA HARTA SAAT INI
-// ======================================
-
 $sisa_harta = floatval($user['current_balance']);
+
+// ======================================
+// KELOMPOK PENGELUARAN & PEMASUKAN BARU (UNTUK MODAL)
+// ======================================
+$tot_aktif_lain = floatval($user['hadiah']) + floatval($user['untung_saham']) + floatval($user['aktif_lain']);
+$tot_pasif      = floatval($user['bunga']) + floatval($user['sewa_properti']) + floatval($user['laba_bisnis']) + floatval($user['dividen']) + floatval($user['royalti']) + floatval($user['pasif_lain']);
+
+$tot_rt         = floatval($user['sewa_rumah']) + floatval($user['cicilan_rumah']) + floatval($user['perawatan_rumah']) + floatval($user['asuransi_alat_rt']) + floatval($user['belanja_rt']) + floatval($user['pbb']) + floatval($user['keamanan_rt']) + floatval($user['servis_alat']) + floatval($user['rt_lain']);
+$tot_kesehatan  = floatval($user['dokter']) + floatval($user['obat_obatan']) + floatval($user['checkup']) + floatval($user['asuransi_kes']) + floatval($user['fitness']) + floatval($user['kesehatan_lain']);
+$tot_transport  = floatval($user['asuransi_kendaraan']) + floatval($user['bbm']) + floatval($user['cicilan_kendaraan']) + floatval($user['servis_kendaraan']) + floatval($user['pajak_stnk']) + floatval($user['transport_umum']) + floatval($user['tol']) + floatval($user['parkir']);
+$tot_makan      = floatval($user['makan_pagi']) + floatval($user['makan_siang']) + floatval($user['makan_malam']) + floatval($user['jajanan']) + floatval($user['makan_luar']) + floatval($user['makanan_lain']);
+$tot_utilitas   = floatval($user['telepon_rumah']) + floatval($user['hp']) + floatval($user['tv_kabel']) + floatval($user['gas']) + floatval($user['air_minum']) + floatval($user['air']) + floatval($user['listrik']) + floatval($user['internet']) + floatval($user['utilitas_lain']);
+$tot_rekreasi   = floatval($user['rek_keanggotaan']) + floatval($user['rek_surat_kabar']) + floatval($user['rek_acara']) + floatval($user['rek_film']) + floatval($user['rek_musik']) + floatval($user['rek_hobi']) + floatval($user['rek_liburan']) + floatval($user['rek_lain']);
+$tot_lainnya    = floatval($user['pajak_penghasilan']) + floatval($user['pengembangan_diri']) + floatval($user['kartu_kredit']) + floatval($user['pendidikan_anak']) + floatval($user['asuransi_pendidikan']) + floatval($user['mainan_anak']) + floatval($user['uang_saku']) + floatval($user['pakaian_sepatu']) + floatval($user['laundry']) + floatval($user['donasi']) + floatval($user['hadiah_pengeluaran']) + floatval($user['pembantu_supir']) + floatval($user['kebutuhan_lain']);
 
 ?>
 
@@ -301,6 +238,7 @@ $sisa_harta = floatval($user['current_balance']);
                         <div class="report-row"><span>Rumah Tinggal</span><span>Rp <?php echo rp($user['nilai_rumah']); ?></span></div>
                         <div class="report-row"><span>Kendaraan</span><span>Rp <?php echo rp($user['nilai_kendaraan']); ?></span></div>
                         <div class="report-row"><span>Perhiasan</span><span>Rp <?php echo rp($user['perhiasan']); ?></span></div>
+                        <div class="report-row"><span>Lainnya</span><span>Rp <?php echo rp($user['pribadi_lain']); ?></span></div>
                         
                         <div class="report-section-title">Aset Investasi</div>
                         <div class="report-row"><span>Deposito</span><span>Rp <?php echo rp($user['deposito']); ?></span></div>
@@ -323,7 +261,7 @@ $sisa_harta = floatval($user['current_balance']);
                         <h6 class="fw-bold text-danger border-bottom pb-2 mb-2">Total Kewajiban (Utang)</h6>
                         <div class="report-row"><span>Kartu Kredit</span><span>Rp <?php echo rp($user['utang_cc']); ?></span></div>
                         <div class="report-row"><span>Tagihan Belum Lunas</span><span>Rp <?php echo rp($user['tagihan_lunas']); ?></span></div>
-                        <div class="report-row"><span>KPR (Rumah)</span><span>Rp <?php echo rp($user['utang_rumah'] + $user['utang_rumah_2']); ?></span></div>
+                        <div class="report-row"><span>KPR (Rumah 1 & 2)</span><span>Rp <?php echo rp($user['utang_rumah'] + $user['utang_rumah_2']); ?></span></div>
                         <div class="report-row"><span>Kredit Kendaraan</span><span>Rp <?php echo rp($user['utang_kendaraan']); ?></span></div>
                         <div class="report-row"><span>Pinjaman Lainnya</span><span>Rp <?php echo rp($user['pinjaman_lain']); ?></span></div>
                         
@@ -354,14 +292,18 @@ $sisa_harta = floatval($user['current_balance']);
                         
                         <div class="report-section-title mt-0 text-success">Pemasukan</div>
                         <div class="report-row"><span>Gaji Rutin</span><span>Rp <?php echo rp($user['gaji']); ?></span></div>
-                        <div class="report-row"><span>Bonus/Komisi</span><span>Rp <?php echo rp($user['bonus'] + $user['komisi']); ?></span></div>
-                        <div class="report-row"><span>Pemasukan Lain</span><span>Rp <?php echo rp($user['in_lain']); ?></span></div>
+                        <div class="report-row"><span>Bonus / Komisi</span><span>Rp <?php echo rp($user['bonus'] + $user['komisi']); ?></span></div>
+                        <div class="report-row"><span>Aktif Lainnya</span><span>Rp <?php echo rp($tot_aktif_lain); ?></span></div>
+                        <div class="report-row"><span>Pemasukan Pasif</span><span>Rp <?php echo rp($tot_pasif); ?></span></div>
 
-                        <div class="report-section-title text-danger">Pengeluaran Utama</div>
-                        <div class="report-row"><span>Sewa / Cicilan Utama</span><span>Rp <?php echo rp($user['out_sewa_cicilan']); ?></span></div>
-                        <div class="report-row"><span>Listrik, Air, Internet</span><span>Rp <?php echo rp($user['out_listrik_air_internet']); ?></span></div>
-                        <div class="report-row"><span>Belanja Dapur / Pasar</span><span>Rp <?php echo rp($user['out_belanja_pasar']); ?></span></div>
-                        <div class="report-row"><span>Transportasi / BBM</span><span>Rp <?php echo rp($user['out_bbm_tol_parkir']); ?></span></div>
+                        <div class="report-section-title text-danger">Pengeluaran</div>
+                        <div class="report-row"><span>Rumah Tangga</span><span>Rp <?php echo rp($tot_rt); ?></span></div>
+                        <div class="report-row"><span>Kesehatan</span><span>Rp <?php echo rp($tot_kesehatan); ?></span></div>
+                        <div class="report-row"><span>Transportasi</span><span>Rp <?php echo rp($tot_transport); ?></span></div>
+                        <div class="report-row"><span>Makanan</span><span>Rp <?php echo rp($tot_makan); ?></span></div>
+                        <div class="report-row"><span>Utilitas (Listrik/Air/Tlp)</span><span>Rp <?php echo rp($tot_utilitas); ?></span></div>
+                        <div class="report-row"><span>Rekreasi</span><span>Rp <?php echo rp($tot_rekreasi); ?></span></div>
+                        <div class="report-row"><span>Kebutuhan Lain & Sosial</span><span>Rp <?php echo rp($tot_lainnya); ?></span></div>
                         
                         <div class="report-total text-dark">
                             <span>TOTAL PENGELUARAN</span>
@@ -372,7 +314,15 @@ $sisa_harta = floatval($user['current_balance']);
 
             </div>
             <div class="modal-footer border-0 p-3 bg-white" style="border-bottom-left-radius: 15px; border-bottom-right-radius: 15px;">
-                <button type="button" class="btn btn-secondary w-100 fw-bold" data-bs-dismiss="modal">Tutup Laporan</button>
+                
+                <a href="edit_financial_assessment.php" class="btn btn-primary w-100 fw-bold">
+                    <i class="fa-solid fa-pen-to-square me-1"></i> Edit Data Finansial
+                </a>
+
+                <button type="button" class="btn btn-secondary w-100 fw-bold" data-bs-dismiss="modal">
+                    Tutup Laporan
+                </button>
+
             </div>
         </div>
     </div>
@@ -465,8 +415,6 @@ function confirmLogout() {
 
             <div class="modal-body bg-light">
 
-                <!-- HARTA AWAL -->
-
                 <div class="card border-0 shadow-sm mb-3">
 
                     <div class="card-body">
@@ -484,8 +432,6 @@ function confirmLogout() {
                     </div>
 
                 </div>
-
-                <!-- PERIODE -->
 
                 <?php foreach($laporan as $periode => $items): ?>
 
@@ -545,8 +491,6 @@ function confirmLogout() {
                     </div>
 
                 <?php endforeach; ?>
-
-                <!-- HASIL AKHIR -->
 
                 <div class="card border-0 bg-dark text-white">
 

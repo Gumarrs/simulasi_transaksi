@@ -111,28 +111,49 @@
     // ======================================
     // HITUNG QTY
     // ======================================
+        if (
+            $tipe_simulasi == 'persentase'
+        )
+        {
 
-    if ($tipe_simulasi == 'persentase') {
+            $qty=$nominal;
 
-        // deposito -> qty berupa nominal uang
-        $qty = $nominal;
-
-    } else {
-
-        if ($val_now <= 0) {
-
-            echo "
-            <script>
-                alert('Harga aset tidak valid');
-                window.location.href='dashboard.php';
-            </script>
-            ";
-
-            exit;
         }
+        elseif(
+            $tipe_simulasi=='edukasi'
+        )
+        {
 
-        $qty = round($nominal / $val_now, 4);
-    }
+            $qty=1;
+
+        }
+        else
+        {
+
+            if ($val_now <= 0)
+            {
+
+                echo "
+                <script>
+
+                alert('Harga aset tidak valid');
+
+                location='dashboard.php';
+
+                </script>
+                ";
+
+                exit;
+
+            }
+
+            $qty=
+            round(
+                $nominal/$val_now,
+                4
+            );
+
+        }
 
 
     // ======================================
@@ -159,6 +180,70 @@
         // ======================================
         // VALIDASI SALDO
         // ======================================
+
+        // KHUSUS EDUKASI
+
+    if(
+        $tipe_simulasi=='edukasi'
+    )
+    {
+
+    if($periode_aktif>=3)
+    {
+
+        echo "
+
+        <script>
+
+        alert('Periode edukasi telah berakhir');
+
+        location='dashboard.php';
+
+        </script>
+
+        ";
+
+        exit;
+
+    }
+
+    $cek_edukasi=mysqli_query(
+        $conn,
+        "
+        SELECT id
+        FROM transactions
+        WHERE user_id='$user_id'
+        AND asset_id='$asset_id'
+        AND type='buy'
+        AND is_active=1
+        LIMIT 1
+        "
+    );
+
+    if(
+        mysqli_num_rows(
+            $cek_edukasi
+        )>0
+    )
+    {
+
+        echo "
+
+        <script>
+
+        alert('Anda sudah memiliki pendidikan ini');
+
+        location='portfolio.php';
+
+        </script>
+
+        ";
+
+        exit;
+
+    }
+
+}
 
         if ($saldo_sekarang < $nominal) {
 
