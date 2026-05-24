@@ -36,8 +36,15 @@ $html_rincian = "";
 
 if (mysqli_num_rows($q_cek) == 0) {
     
-    $q_modal = mysqli_query($conn, "SELECT SUM(CASE WHEN type='buy' THEN qty ELSE 0 END) - SUM(CASE WHEN type='sell' AND qty > 0 THEN qty ELSE 0 END) AS sisa_unit FROM transactions WHERE user_id='$user_id' AND asset_id='$asset_id' AND period <= '$target_p'");
-    $sisa_unit = floatval(mysqli_fetch_assoc($q_modal)['sisa_unit']);
+    $q_modal = mysqli_query($conn, "SELECT SUM(CASE WHEN type='buy' THEN qty ELSE 0 END) - SUM(CASE WHEN type='sell' AND qty > 0 THEN qty ELSE 0 END) AS sisa_unit FROM transactions WHERE user_id='$user_id' AND asset_id='$asset_id'");
+    
+    if ($sisa_unit <= 0) {
+    echo '<script>
+        alert("Aset ini sudah tidak Anda miliki / sudah terjual habis!"); 
+        window.location.href="portfolio.php";
+    </script>';
+    exit;
+}
 
     if ($sisa_unit > 0) {
         $unclaimed_yield = $sisa_unit * floatval($asset['laba_now']);

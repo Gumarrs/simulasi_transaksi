@@ -48,7 +48,7 @@ if ($asset['tipe_simulasi'] == 'bisnis' && $active_period > 1) {
     $q_cek_laba = mysqli_query($conn, "SELECT id FROM transactions WHERE user_id='$user_id' AND asset_id='$asset_id' AND type='sell' AND qty=0 AND buy_period='$target_p'");
     
     if (mysqli_num_rows($q_cek_laba) == 0) {
-        $q_modal_bisnis = mysqli_query($conn, "SELECT SUM(CASE WHEN type='buy' THEN qty ELSE 0 END) - SUM(CASE WHEN type='sell' AND qty > 0 THEN qty ELSE 0 END) AS sisa_unit FROM transactions WHERE user_id='$user_id' AND asset_id='$asset_id' AND period <= '$target_p'");
+        $q_modal_bisnis = mysqli_query($conn, "SELECT SUM(CASE WHEN type='buy' THEN qty ELSE 0 END) - SUM(CASE WHEN type='sell' AND qty > 0 THEN qty ELSE 0 END) AS sisa_unit FROM transactions WHERE user_id='$user_id' AND asset_id='$asset_id'");
         $sisa_unit_bisnis = floatval(mysqli_fetch_assoc($q_modal_bisnis)['sisa_unit']);
         
         if ($sisa_unit_bisnis > 0) {

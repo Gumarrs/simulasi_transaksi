@@ -280,7 +280,7 @@ if(mysqli_num_rows($q_force) > 0){
         $sisa_modal = floatval($data_qty['sisa_modal']);
 
         // Eksekusi Jual Paksa jika masih ada aset tersisa
-        if ($sisa_qty > 0 || $sisa_modal > 0) {
+        if (($tipe_sim != 'persentase' && $sisa_qty > 0) || ($tipe_sim == 'persentase' && $sisa_modal > 0)) {
             
             if ($tipe_sim == 'persentase') {
                 $hasil_penjualan = $sisa_modal;
