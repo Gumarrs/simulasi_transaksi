@@ -17,6 +17,7 @@ $error_msg = "";
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['tambah_aset'])) {
 
     $nama = trim($_POST['nama_aset']);
+    $group_name = trim($_POST['group_name']);
     $kategori = $_POST['kategori'];
     $tipe_simulasi = $_POST['tipe_simulasi'];
     $satuan = trim($_POST['satuan']);
@@ -51,6 +52,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['tambah_aset'])) {
     $stmt = mysqli_prepare($conn, "
         INSERT INTO market_assets (
             nama_aset,
+            group_name,
             kategori,
             tipe_simulasi,
             satuan,
@@ -70,15 +72,16 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['tambah_aset'])) {
             ?, ?, ?, ?, ?,
             ?, ?, ?,
             ?, ?, ?,
-            ?, ?, ?, ?
+            ?, ?, ?, ?,?
         )
     ");
 
     mysqli_stmt_bind_param(
         $stmt,
-        "ssssidddddsssss",
+        "sssssidddddsssss",
 
         $nama,
+        $group_name,
         $kategori,
         $tipe_simulasi,
         $satuan,
@@ -117,6 +120,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['edit_aset'])) {
     $id = (int)$_POST['id_aset'];
 
     $nama = trim($_POST['nama_aset']);
+    $group_name = trim($_POST['group_name']);
     $kategori = $_POST['kategori'];
     $tipe_simulasi = $_POST['tipe_simulasi'];
     $satuan = trim($_POST['satuan']);
@@ -154,6 +158,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['edit_aset'])) {
             UPDATE market_assets SET
 
                 nama_aset = ?,
+                group_name = ?,
                 kategori = ?,
                 tipe_simulasi = ?,
                 satuan = ?,
@@ -178,9 +183,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['edit_aset'])) {
 
         mysqli_stmt_bind_param(
             $stmt,
-            "ssssidddddsssssi",
+            "sssssidddddsssssi",
 
             $nama,
+            $group_name,
             $kategori,
             $tipe_simulasi,
             $satuan,
@@ -209,6 +215,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['edit_aset'])) {
             UPDATE market_assets SET
 
                 nama_aset = ?,
+                group_name = ?,
                 kategori = ?,
                 tipe_simulasi = ?,
                 satuan = ?,
@@ -231,9 +238,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['edit_aset'])) {
 
         mysqli_stmt_bind_param(
             $stmt,
-            "ssssidddddssssi",
+            "sssssidddddssssi",
 
             $nama,
+            $group_name,
             $kategori,
             $tipe_simulasi,
             $satuan,
@@ -475,6 +483,18 @@ if (!$assets) {
           <div class="modal-body px-4">
               <div class="row g-3 mb-4">
                   <div class="col-md-5"><label class="small fw-bold">Nama Aset</label><input type="text" name="nama_aset" class="form-control" required></div>
+                  <div class="col-md-3">
+    <label class="small fw-bold">
+        Kelompok Aset
+    </label>
+
+    <input
+        type="text"
+        name="group_name"
+        class="form-control"
+        placeholder="Contoh: Showroom"
+    >
+</div>
                   <div class="col-md-2"><label class="small fw-bold">Kategori</label><select name="kategori" class="form-select"><option value="Paper">Paper</option><option value="Commodity">Commodity</option><option value="Real">Real</option></select></div>
                   <div class="col-md-2"><label class="small fw-bold">Tipe Simulasi</label><select name="tipe_simulasi" class="form-select"><option value="market">Market</option><option value="persentase">Persentase</option><option value="bisnis">Bisnis</option><option value="edukasi">Edukasi</option><option value="proteksi">Proteksi</option></select></div>
                   <div class="col-md-2"><label class="small fw-bold">Satuan</label><input type="text" name="satuan" class="form-control" required></div>
@@ -551,6 +571,19 @@ if (!$assets) {
           <div class="modal-body px-4">
               <div class="row g-3 mb-4">
                   <div class="col-md-5"><label class="small fw-bold">Nama Aset</label><input type="text" name="nama_aset" id="edit_nama" class="form-control" required></div>
+                  <div class="col-md-3">
+    <label class="small fw-bold">
+        Kelompok Aset
+    </label>
+
+    <input
+        type="text"
+        name="group_name"
+        id="edit_group_name"
+        class="form-control"
+        placeholder="Contoh: Showroom"
+    >
+</div>
                   <div class="col-md-2"><label class="small fw-bold">Kategori</label><select name="kategori" id="edit_kategori" class="form-select"><option value="Paper">Paper</option><option value="Commodity">Commodity</option><option value="Real">Real</option></select></div>
                   <div class="col-md-2"><label class="small fw-bold">Tipe Simulasi</label><select name="tipe_simulasi" id="edit_tipe_simulasi" class="form-select"><option value="market">Market</option><option value="persentase">Persentase</option><option value="edukasi">Edukasi</option><option value="bisnis">Bisnis</option><option value="proteksi">Proteksi</option></select></div>
                   <div class="col-md-2"><label class="small fw-bold">Satuan</label><input type="text" name="satuan" id="edit_satuan" class="form-control" required></div>
@@ -688,6 +721,7 @@ function uploadImage(file, editor) {
 function bukaEdit(data) {
     $('#edit_id').val(data.id);
     $('#edit_nama').val(data.nama_aset);
+    $('#edit_group_name').val(data.group_name);
     $('#edit_kategori').val(data.kategori);
     $('#edit_tipe_simulasi').val(data.tipe_simulasi);
     $('#edit_satuan').val(data.satuan);

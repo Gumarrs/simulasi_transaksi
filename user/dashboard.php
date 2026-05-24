@@ -91,12 +91,22 @@ $query_assets = mysqli_query($conn, "
         $kolom_val AS val_now,
         $kolom_laba AS laba_now
     FROM market_assets
+    WHERE nama_aset != 'Showroom' AND (group_name IS NULL OR group_name = '')
 ");
 
 // JIKA QUERY GAGAL, TAMPILKAN PESAN ERROR DATABASE-NYA
 if (!$query_assets) {
     die("<div class='alert alert-danger m-4'><b>Error Database:</b> " . mysqli_error($conn) . "<br>Cek apakah kolom <b>$kolom_val</b> atau <b>$kolom_laba</b> benar-benar ada di tabel market_assets.</div>");
 }
+
+$q_showroom_parent = mysqli_query($conn, "
+    SELECT id, nama_aset, kategori, gambar
+    FROM market_assets
+    WHERE nama_aset = 'Showroom'
+    LIMIT 1
+");
+
+$showroom_parent = mysqli_fetch_assoc($q_showroom_parent);
 
 // Count total instrumen
 $total_instrumen = mysqli_num_rows($query_assets);
@@ -160,6 +170,33 @@ body{ background:#f4f7f6; padding-bottom:80px; }
 
         <div class="row g-3" id="gridView">
             <?php mysqli_data_seek($query_assets, 0); ?>
+ <?php if($showroom_parent): ?>
+<div class="col-6">
+    <a href="showroom.php" class="text-decoration-none text-dark">
+        <div class="card asset-card h-100">
+            <img
+                src="../assets/img/investasi/<?php echo !empty($showroom_parent['gambar']) ? $showroom_parent['gambar'] : 'placeholder.jpg'; ?>"
+                class="asset-img w-100"
+                onerror="this.src='https://via.placeholder.com/150'"
+            >
+
+            <div class="card-body p-2">
+                <span class="badge bg-light text-dark border mb-2">
+                    <?php echo $showroom_parent['kategori']; ?>
+                </span>
+
+                <h6 class="fw-bold mb-1" style="font-size:0.85rem;">
+                    <?php echo $showroom_parent['nama_aset']; ?>
+                </h6>
+
+                <div class="text-primary fw-bold small">
+                    Pilih Jenis Mobil
+                </div>
+            </div>
+        </div>
+    </a>
+</div>
+<?php endif; ?>
             <?php while($row = mysqli_fetch_assoc($query_assets)) : 
                 
                 // PENGAMANAN DATA: Konversi langsung ke format float agar angka terbaca jelas
@@ -196,6 +233,58 @@ body{ background:#f4f7f6; padding-bottom:80px; }
 
         <div id="listView" style="display:none;">
             <?php mysqli_data_seek($query_assets, 0); ?>
+            <?php if($showroom_parent): ?>
+
+    <a href="showroom.php" class="text-decoration-none text-dark">
+
+        <div class="asset-list mb-2 shadow-sm">
+
+            <div class="d-flex justify-content-between align-items-center">
+
+                <div class="d-flex align-items-center">
+
+                    <img
+                        src="../assets/img/investasi/<?php echo !empty($showroom_parent['gambar']) ? $showroom_parent['gambar'] : 'placeholder.jpg'; ?>"
+                        style="width:45px;height:45px;border-radius:8px;object-fit:cover;"
+                        class="me-3"
+                        onerror="this.src='https://via.placeholder.com/45'"
+                    >
+
+                    <div>
+
+                        <div class="fw-bold">
+                            <?php echo $showroom_parent['nama_aset']; ?>
+                        </div>
+
+                        <small class="text-muted">
+                            <?php echo $showroom_parent['kategori']; ?>
+                        </small>
+
+                    </div>
+
+                </div>
+
+                <div class="text-end">
+
+                    <div class="fw-bold text-primary">
+                        Pilih Jenis Mobil
+                    </div>
+
+                    <small class="text-muted" style="font-size:0.7rem;">
+                        Detail
+                        <i class="fa-solid fa-chevron-right"></i>
+                    </small>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </a>
+
+    <?php endif; ?>
+
             <?php while($row = mysqli_fetch_assoc($query_assets)) : 
                 
                 $val_now = floatval($row['val_now']);

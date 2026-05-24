@@ -61,6 +61,7 @@ $query_portfolio = mysqli_query($conn, "
 
         a.id AS asset_id,
         a.nama_aset,
+        a.group_name,
         a.kategori,
         a.tipe_simulasi,
         a.multiplier,
@@ -125,6 +126,7 @@ $q_detail = mysqli_query($conn, "
         t.realized_profit,
         t.buy_period,
         a.nama_aset,
+        a.group_name,
         a.tipe_simulasi
 
     FROM transactions t
@@ -158,8 +160,13 @@ while($d = mysqli_fetch_assoc($q_detail)) {
 
         $history_detail[$period]['buy_total'] += $d['amount_money'];
 
+        $label_aset =
+        !empty($d['group_name'])
+        ? $d['group_name'].' - '.$d['nama_aset']
+        : $d['nama_aset'];
+
         $history_detail[$period]['buy_items'][] = [
-            'aset' => $d['nama_aset'],
+            'aset' => $label_aset,
             'nominal' => $d['amount_money']
         ];
     }
@@ -194,17 +201,15 @@ while($d = mysqli_fetch_assoc($q_detail)) {
     }
     else
     {
-
         $label_aset=
         'Pencairan Profit '
         .$d['nama_aset']
         .' (Periode '
         .$p_profit.
         ')';
-
     }
-        
-        $history_detail[$period]['sell_items'][] = [
+
+    $history_detail[$period]['sell_items'][] = [
             'aset' => $label_aset,
             'nominal' => $d['amount_money']
         ];
@@ -217,8 +222,13 @@ while($d = mysqli_fetch_assoc($q_detail)) {
 
         $history_detail[$period]['profit_total'] += $d['realized_profit'];
 
+        $label_aset =
+        !empty($d['group_name'])
+        ? $d['group_name'].' - '.$d['nama_aset']
+        : $d['nama_aset'];
+
         $history_detail[$period]['sell_items'][] = [
-            'aset' => $d['nama_aset'],
+            'aset' => $label_aset,
             'nominal' => $d['amount_money']
         ];
     }
@@ -465,9 +475,15 @@ $punya_history = !empty($history_detail);
 
                                 <div>
 
-                                    <h6 class="fw-bold mb-0">
-                                        <?php echo $row['nama_aset']; ?>
-                                    </h6>
+                                <h6 class="fw-bold mb-0">
+
+                                <?php
+                                echo !empty($row['group_name'])
+                                ? $row['group_name'].' - '.$row['nama_aset']
+                                : $row['nama_aset'];
+                                ?>
+
+                                </h6>
 
                                     <small class="text-muted">
                                         

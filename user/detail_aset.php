@@ -94,6 +94,16 @@ for ($i = 1; $i <= $active_period; $i++) {
 $js_labels = implode(", ", $chart_labels);
 $js_data = implode(", ", $chart_data);
 ?>
+
+<?php
+
+$back_url = 'dashboard.php';
+
+if(isset($_GET['from']) && $_GET['from'] == 'showroom'){
+    $back_url = 'showroom.php';
+}
+
+?>
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -120,7 +130,7 @@ $js_data = implode(", ", $chart_data);
 <body>
 
 <div class="mobile-container">
-    <a href="dashboard.php" class="back-btn"><i class="fa-solid fa-arrow-left"></i></a>
+    <a href="<?php echo $back_url; ?>" class="back-btn"><i class="fa-solid fa-arrow-left"></i></a>
     <img src="../assets/img/investasi/<?php echo !empty($asset['gambar']) ? $asset['gambar'] : 'placeholder.jpg'; ?>" class="header-img" onerror="this.src='https://via.placeholder.com/400x250'">
 
     <div class="p-4">
