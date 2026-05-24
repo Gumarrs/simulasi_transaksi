@@ -237,22 +237,27 @@ if ($period_status == 'closed') {
     $q_all_assets = mysqli_query($conn, "SELECT * FROM market_assets");
 
     while ($a = mysqli_fetch_assoc($q_all_assets)) {
-        $a_id = $a['id'];
-        $harga_jual_now = floatval($a['value_p' . $active_period]);
-        $tipe_sim = $a['tipe_simulasi'];
+    $a_id = $a['id'];
+    $harga_jual_now = floatval($a['value_p' . $active_period]);
+    $tipe_sim = $a['tipe_simulasi'];
 
-        // Cegah force sell berulang saat reload
-$q_force = mysqli_query($conn,"
-    SELECT id
-    FROM transactions
-    WHERE
-        user_id='$user_id'
-        AND asset_id='$a_id'
-        AND type='sell'
-        AND buy_period='$active_period'
-        AND qty > 0
-    LIMIT 1
-");
+    // EDUKASI BUKAN ASET JUAL, JANGAN IKUT FORCE SELL AKHIR SIMULASI
+    if ($tipe_sim == 'edukasi') {
+        continue;
+    }
+
+    // Cegah force sell berulang saat reload
+    $q_force = mysqli_query($conn,"
+        SELECT id
+        FROM transactions
+        WHERE
+            user_id='$user_id'
+            AND asset_id='$a_id'
+            AND type='sell'
+            AND buy_period='$active_period'
+            AND qty > 0
+        LIMIT 1
+    ");
 
 if(mysqli_num_rows($q_force) > 0){
     continue;

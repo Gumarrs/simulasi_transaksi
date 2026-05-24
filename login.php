@@ -43,91 +43,173 @@ if(isset($_SESSION['user_id'])){
     >
 
     <style>
+body{
+    background:#eef2f7;
+    font-family:'Segoe UI',sans-serif;
+}
 
-        body{
-            background-color:#e9ecef;
-        }
+.mobile-container{
 
-        .mobile-container{
+    max-width:480px;
 
-            max-width:480px;
+    margin:0 auto;
 
-            margin:0 auto;
+    background:#f8fafc;
 
-            background:#fff;
+    min-height:100vh;
 
-            min-height:100vh;
+    box-shadow:0 0 25px rgba(15,23,42,.08);
 
-            box-shadow:0 0 25px rgba(0,0,0,0.1);
+    display:flex;
 
-            display:flex;
+    flex-direction:column;
 
-            flex-direction:column;
+    position:relative;
 
-            position:relative;
-        }
+    overflow:hidden;
+}
 
-        .login-wrapper{
+.login-wrapper{
 
-            flex-grow:1;
+    flex-grow:1;
 
-            display:flex;
+    display:flex;
 
-            flex-direction:column;
+    flex-direction:column;
 
-            justify-content:center;
+    justify-content:center;
 
-            padding:40px 30px;
-        }
+    padding:40px 30px;
+}
 
-        .back-btn{
+.back-btn{
 
-            position:absolute;
+    position:absolute;
 
-            top:20px;
+    top:20px;
 
-            left:20px;
+    left:20px;
 
-            color:#6c757d;
+    color:#64748b;
 
-            text-decoration:none;
+    text-decoration:none;
 
-            font-size:0.9rem;
+    font-size:0.9rem;
 
-            font-weight:500;
-        }
+    font-weight:700;
 
-        .back-btn:hover{
+    transition:.2s;
+}
 
-            color:#0d6efd;
-        }
+.back-btn:hover{
 
-        .form-control{
+    color:#0d6efd;
+}
 
-            border-radius:10px;
+.form-control{
 
-            padding:12px 15px;
-        }
+    border-radius:14px;
 
-        .btn-login{
+    padding:13px 15px;
 
-            border-radius:10px;
+    background:#f1f5f9 !important;
 
-            padding:12px;
+    border:1px solid #e2e8f0 !important;
 
-            font-size:1.05rem;
-        }
+    font-weight:600;
+}
 
-        .input-group-text{
+.form-control:focus{
 
-            border-radius:10px 0 0 10px !important;
-        }
+    box-shadow:none;
 
-        .password-toggle{
+    border-color:#0d6efd !important;
 
-            border-radius:0 10px 10px 0 !important;
-        }
+    background:white !important;
+}
 
+.btn-login{
+
+    border-radius:16px;
+
+    padding:13px;
+
+    font-size:1rem;
+
+    background:linear-gradient(135deg,#0d6efd,#2563eb);
+
+    border:none;
+
+    box-shadow:0 10px 22px rgba(13,110,253,.22);
+
+    transition:.2s;
+}
+
+.btn-login:hover{
+
+    transform:translateY(-1px);
+}
+
+.input-group{
+
+    border-radius:14px;
+
+    overflow:hidden;
+}
+
+.input-group-text{
+
+    border:none !important;
+
+    background:#f1f5f9 !important;
+
+    padding-left:15px;
+}
+
+.password-toggle{
+
+    border:none !important;
+
+    background:#f1f5f9 !important;
+
+    color:#64748b;
+}
+
+.login-logo{
+
+    width:78px;
+
+    height:78px;
+
+    border-radius:24px;
+
+    background:linear-gradient(135deg,#111827,#0d6efd);
+
+    color:white;
+
+    display:inline-flex;
+
+    align-items:center;
+
+    justify-content:center;
+
+    box-shadow:0 14px 28px rgba(13,110,253,.22);
+}
+
+.login-title{
+
+    color:#111827;
+}
+
+.login-subtitle{
+
+    color:#64748b;
+}
+
+.alert{
+
+    border-radius:16px;
+}
     </style>
 
 </head>
@@ -149,18 +231,15 @@ if(isset($_SESSION['user_id'])){
         <!-- HEADER -->
         <div class="text-center mb-5">
 
-            <div
-                class="bg-primary text-white d-inline-flex align-items-center justify-content-center mb-3 shadow-sm"
-                style="width:70px;height:70px;border-radius:20px;"
-            >
+        <div class="login-logo mb-3">
                 <i class="fa-solid fa-wallet fa-2x"></i>
             </div>
 
-            <h3 class="text-primary fw-bold mb-1">
+            <h3 class="login-title fw-bold mb-1">
                 Simulasi Transaksi
             </h3>
 
-            <p class="text-muted small">
+            <p class="login-subtitle small">
                 Silakan masuk menggunakan ID Peserta
             </p>
 

@@ -265,60 +265,169 @@ $punya_history = !empty($history_detail);
     >
 
     <style>
+body {
+    background:#eef2f7;
+    padding-bottom:85px;
+    font-family:'Segoe UI',sans-serif;
+}
 
-        body {
-            background-color: #f4f7f6;
-            padding-bottom: 75px;
-        }
+.mobile-container {
+    max-width:480px;
+    margin:auto;
+    background:#f8fafc;
+    min-height:100vh;
+    box-shadow:0 0 18px rgba(15,23,42,.08);
+    position:relative;
+}
 
-        .mobile-container {
-            max-width: 480px;
-            margin: auto;
-            background: #fff;
-            min-height: 100vh;
-            box-shadow: 0 0 15px rgba(0,0,0,0.05);
-            position: relative;
-        }
+.page-header {
+    background:linear-gradient(135deg,#111827,#0d6efd);
+    color:white;
+    padding:22px 18px 48px;
+    border-bottom-left-radius:30px;
+    border-bottom-right-radius:30px;
+    position:sticky;
+    top:0;
+    z-index:99;
+}
 
-        .bottom-nav {
-            position: fixed;
-            bottom: 0;
-            width: 100%;
-            max-width: 480px;
-            background: #fff;
-            border-top: 1px solid #ddd;
-            z-index: 1000;
-            display: flex;
-            justify-content: space-around;
-            padding: 10px 0;
-        }
+.header-pill {
+    display:inline-block;
+    background:rgba(255,255,255,.16);
+    border:1px solid rgba(255,255,255,.22);
+    color:white;
+    border-radius:999px;
+    padding:5px 12px;
+    font-size:.72rem;
+    font-weight:700;
+}
 
-        .nav-item {
-            text-align: center;
-            color: #6c757d;
-            text-decoration: none;
-            font-size: 0.8rem;
-        }
+.portfolio-card {
+    border:none;
+    border-radius:20px;
+    box-shadow:0 8px 22px rgba(15,23,42,.08);
+    overflow:hidden;
+    background:white;
+}
 
-        .nav-item.active {
-            color: #0d6efd;
-            font-weight: bold;
-        }
+.asset-img {
+    width:54px;
+    height:54px;
+    object-fit:contain;
+    background:#f1f5f9;
+    border-radius:16px;
+    padding:5px;
+}
 
-        .nav-item i {
-            font-size: 1.2rem;
-            display: block;
-            margin-bottom: 2px;
-        }
+.asset-name {
+    font-size:.92rem;
+    font-weight:800;
+    color:#111827;
+}
 
-        .asset-img {
-            width: 50px;
-            height: 50px;
-            object-fit: contain; /* Mengubah dari cover menjadi contain agar gambar utuh */
-            background-color: #f8f9fa; /* Opsional: memberi warna latar jika gambar aslinya tidak kotak */
-            border-radius: 8px;
-        }
+.asset-badge {
+    background:#f1f5f9;
+    color:#334155;
+    border-radius:999px;
+    padding:5px 10px;
+    font-size:.68rem;
+    font-weight:700;
+}
 
+.metric-box {
+    background:#f8fafc;
+    border:1px solid #e5e7eb;
+    border-radius:16px;
+    padding:11px;
+}
+
+.metric-label {
+    font-size:.68rem;
+    color:#64748b;
+}
+
+.metric-value {
+    font-size:.9rem;
+    font-weight:800;
+    color:#111827;
+}
+
+.wealth-card {
+    background:linear-gradient(135deg,#111827,#1e293b);
+    color:white;
+    border:none;
+    border-radius:22px;
+    box-shadow:0 10px 26px rgba(15,23,42,.18);
+}
+
+.history-card {
+    border:none;
+    border-radius:20px;
+    box-shadow:0 8px 22px rgba(15,23,42,.08);
+    overflow:hidden;
+}
+
+.history-button {
+    background:white;
+    border:none;
+    border-bottom:1px solid #f1f5f9;
+}
+
+.history-period {
+    font-weight:800;
+    color:#111827;
+}
+
+.transaction-row {
+    display:flex;
+    justify-content:space-between;
+    gap:12px;
+    font-size:.78rem;
+    padding:6px 0;
+    border-bottom:1px dashed #e5e7eb;
+}
+
+.transaction-row:last-child {
+    border-bottom:none;
+}
+
+.empty-state {
+    background:white;
+    border-radius:22px;
+    box-shadow:0 8px 22px rgba(15,23,42,.08);
+    padding:34px 18px;
+}
+
+.bottom-nav {
+    position:fixed;
+    bottom:0;
+    width:100%;
+    max-width:480px;
+    background:white;
+    border-top:1px solid #e5e7eb;
+    z-index:1000;
+    display:flex;
+    justify-content:space-around;
+    padding:10px 0;
+}
+
+.nav-item {
+    text-align:center;
+    color:#6c757d;
+    text-decoration:none;
+    font-size:.78rem;
+}
+
+.nav-item.active {
+    color:#0d6efd;
+    font-weight:bold;
+}
+
+.nav-item i {
+    font-size:1.15rem;
+    display:block;
+    margin-bottom:2px;
+}
     </style>
 
 </head>
@@ -327,14 +436,18 @@ $punya_history = !empty($history_detail);
 
 <div class="mobile-container">
 
-    <div class="p-3 border-bottom bg-white sticky-top text-center">
+    <div class="page-header text-center">
 
-        <h5 class="fw-bold text-primary mb-0">
+        <span class="header-pill mb-2">
+            Periode <?php echo $active_period; ?>
+        </span>
+
+        <h5 class="fw-bold mb-0">
             Portofolio Investasi
         </h5>
 
-        <small class="text-muted">
-            Periode <?php echo $active_period; ?>
+        <small class="opacity-75">
+            Ringkasan aset dan hasil transaksi Anda
         </small>
 
     </div>
@@ -458,10 +571,7 @@ $punya_history = !empty($history_detail);
 
                     ?>
 
-                    <div
-                        class="list-group-item list-group-item-action p-3 border-0 shadow-sm mb-2"
-                        style="border-radius: 10px;"
-                    >
+                    <div class="portfolio-card p-3 mb-3">
 
                         <div class="d-flex justify-content-between align-items-center mb-2">
 
@@ -475,7 +585,7 @@ $punya_history = !empty($history_detail);
 
                                 <div>
 
-                                <h6 class="fw-bold mb-0">
+                               <h6 class="asset-name mb-0">
 
                                 <?php
                                 echo !empty($row['group_name'])
@@ -495,7 +605,7 @@ $punya_history = !empty($history_detail);
 
                             <div class="text-end">
 
-                                <span class="badge bg-light text-dark border mb-1">
+                                <span class="asset-badge">
                                     <?php echo $row['kategori']; ?>
                                 </span>
 
@@ -503,17 +613,17 @@ $punya_history = !empty($history_detail);
 
                         </div>
 
-                        <div class="bg-light p-2 rounded mt-2">
+                        <div class="metric-box mt-3">
 
                             <div class="d-flex justify-content-between align-items-center mb-1">
 
                                 <div>
 
-                                    <small class="text-muted d-block" style="font-size: 0.7rem;">
+                                    <small class="metric-label d-block">
                                         Valuasi Jual
                                     </small>
 
-                                    <span class="fw-bold text-dark">
+                                    <span class="metric-value">
                                         Rp <?php echo number_format($nilai_sekarang, 0, ',', '.'); ?>
                                     </span>
 
@@ -521,7 +631,7 @@ $punya_history = !empty($history_detail);
 
                                 <div class="text-end">
 
-                                    <small class="text-muted d-block" style="font-size: 0.7rem;">
+                                    <small class="metric-label d-block">
 
                                         <?php if($row['tipe_simulasi'] == 'persentase'): ?>
 
@@ -573,7 +683,7 @@ $punya_history = !empty($history_detail);
 
             <!-- TOTAL WEALTH -->
 
-            <div class="card bg-dark text-white border-0 shadow mt-4 mb-4" style="border-radius: 12px;">
+            <div class="card wealth-card mt-4 mb-4">
 
                 <div class="card-body p-4 text-center">
 
@@ -630,7 +740,7 @@ $punya_history = !empty($history_detail);
 
 <!-- HISTORY -->
   <?php endif; ?>
-<div class="card border-0 shadow-sm mb-5" style="border-radius: 12px;">
+<div class="card history-card mb-5">
 
     <div class="card-body p-3">
 
@@ -659,14 +769,14 @@ $punya_history = !empty($history_detail);
                     <!-- HEADER -->
 
                     <button
-                        class="btn w-100 text-start p-3 bg-light border-0"
+                        class="btn w-100 text-start p-3 history-button"
                         data-bs-toggle="collapse"
                         data-bs-target="#history_<?php echo $period; ?>"
                     >
 
                         <div class="d-flex justify-content-between align-items-center">
 
-                            <div class="fw-bold text-dark">
+                            <div class="history-period">
 
                                 <i class="fa-solid fa-chevron-down me-2"></i>
 
@@ -711,7 +821,7 @@ $punya_history = !empty($history_detail);
 
                                     <?php foreach($detail['buy_items'] as $item): ?>
 
-                                        <div class="d-flex justify-content-between small mb-1">
+                                        <div class="transaction-row">
 
                                             <span class="text-muted">
 
@@ -749,7 +859,7 @@ $punya_history = !empty($history_detail);
 
                                     <?php foreach($detail['sell_items'] as $item): ?>
 
-                                        <div class="d-flex justify-content-between small mb-1">
+                                        <div class="transaction-row">
 
                                             <span class="text-muted">
 

@@ -343,19 +343,46 @@ onclick="selectQty(<?php echo $i; ?>,this)"
 
 <?php else: ?>
 
-<?php for($i=100;$i<=1000;$i+=100): ?>
+<?php
+$is_showroom =
+    !empty($asset['group_name'])
+    &&
+    $asset['group_name'] == 'Showroom';
+?>
 
-<button
-type="button"
-class="chip-btn"
-onclick="selectQty(<?php echo $i; ?>,this)"
->
+<?php if($is_showroom): ?>
 
-<?php echo $i; ?>
+    <?php for($i=1;$i<=7;$i++): ?>
 
-</button>
+        <button
+        type="button"
+        class="chip-btn"
+        onclick="selectQty(<?php echo $i; ?>,this)"
+        >
 
-<?php endfor; ?>
+        <?php echo $i; ?>
+
+        </button>
+
+    <?php endfor; ?>
+
+<?php else: ?>
+
+    <?php for($i=100;$i<=1000;$i+=100): ?>
+
+        <button
+        type="button"
+        class="chip-btn"
+        onclick="selectQty(<?php echo $i; ?>,this)"
+        >
+
+        <?php echo $i; ?>
+
+        </button>
+
+    <?php endfor; ?>
+
+<?php endif; ?>
 
 <?php endif; ?>
 

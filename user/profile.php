@@ -108,21 +108,157 @@ $tot_lainnya    = floatval($user['pajak_penghasilan']) + floatval($user['pengemb
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        body { background-color: #f4f7f6; padding-bottom: 75px; }
-        .mobile-container { max-width: 480px; margin: auto; background: #fff; min-height: 100vh; box-shadow: 0 0 15px rgba(0,0,0,0.05); position: relative;}
-        .bottom-nav { position: fixed; bottom: 0; width: 100%; max-width: 480px; background: #fff; border-top: 1px solid #ddd; z-index: 1000; display: flex; justify-content: space-around; padding: 10px 0; }
-        .nav-item { text-align: center; color: #6c757d; text-decoration: none; font-size: 0.8rem; }
-        .nav-item.active { color: #0d6efd; font-weight: bold; }
-        .nav-item i { font-size: 1.2rem; display: block; margin-bottom: 2px; }
-        
-        .profile-header { background: linear-gradient(135deg, #0d6efd, #0b5ed7); color: white; padding: 40px 20px; border-bottom-left-radius: 30px; border-bottom-right-radius: 30px; }
-        .info-card { margin-top: -30px; border-radius: 15px; border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
-        
-        /* Styling untuk Modal Laporan */
-        .report-section-title { background-color: #e9ecef; padding: 8px 12px; border-radius: 8px; font-weight: bold; font-size: 0.85rem; color: #495057; margin-bottom: 10px; margin-top: 15px;}
-        .report-row { display: flex; justify-content: space-between; font-size: 0.8rem; padding: 4px 0; border-bottom: 1px dashed #eee; }
-        .report-row:last-child { border-bottom: none; }
-        .report-total { display: flex; justify-content: space-between; font-size: 0.85rem; font-weight: bold; padding-top: 8px; margin-top: 8px; border-top: 2px solid #eee;}
+body {
+    background:#eef2f7;
+    padding-bottom:85px;
+    font-family:'Segoe UI',sans-serif;
+}
+
+.mobile-container {
+    max-width:480px;
+    margin:auto;
+    background:#f8fafc;
+    min-height:100vh;
+    box-shadow:0 0 18px rgba(15,23,42,.08);
+    position:relative;
+}
+
+.profile-header {
+    background:linear-gradient(135deg,#111827,#0d6efd);
+    color:white;
+    padding:42px 20px 55px;
+    border-bottom-left-radius:34px;
+    border-bottom-right-radius:34px;
+    position:relative;
+    overflow:hidden;
+}
+
+.profile-header:after {
+    content:"";
+    position:absolute;
+    width:170px;
+    height:170px;
+    right:-55px;
+    top:-60px;
+    background:rgba(255,255,255,.12);
+    border-radius:50%;
+}
+
+.avatar-wrap {
+    background:white;
+    display:inline-block;
+    border-radius:50%;
+    padding:4px;
+    box-shadow:0 10px 24px rgba(0,0,0,.18);
+}
+
+.info-card {
+    margin-top:-38px;
+    border-radius:22px;
+    border:none;
+    box-shadow:0 10px 25px rgba(15,23,42,.10);
+}
+
+.finance-row {
+    background:#f8fafc;
+    border-radius:14px;
+    padding:10px 12px;
+    margin-bottom:10px;
+}
+
+.finance-label {
+    font-size:.72rem;
+    color:#64748b;
+}
+
+.finance-value {
+    font-weight:800;
+    color:#111827;
+    font-size:.88rem;
+}
+
+.btn-modern {
+    border-radius:14px;
+    padding:10px;
+}
+
+.section-title {
+    font-weight:800;
+    color:#111827;
+}
+
+.setting-card {
+    border:none;
+    border-radius:18px;
+    overflow:hidden;
+    box-shadow:0 8px 20px rgba(15,23,42,.07);
+}
+
+.setting-item {
+    padding:14px 16px;
+    background:white;
+    border-bottom:1px solid #f1f5f9;
+}
+
+.bottom-nav {
+    position:fixed;
+    bottom:0;
+    width:100%;
+    max-width:480px;
+    background:white;
+    border-top:1px solid #e5e7eb;
+    z-index:1000;
+    display:flex;
+    justify-content:space-around;
+    padding:10px 0;
+}
+
+.nav-item {
+    text-align:center;
+    color:#6c757d;
+    text-decoration:none;
+    font-size:.78rem;
+}
+
+.nav-item.active {
+    color:#0d6efd;
+    font-weight:bold;
+}
+
+.nav-item i {
+    font-size:1.15rem;
+    display:block;
+    margin-bottom:2px;
+}
+
+.report-section-title {
+    background:#eef2f7;
+    padding:8px 12px;
+    border-radius:10px;
+    font-weight:800;
+    font-size:.82rem;
+    color:#334155;
+    margin-bottom:10px;
+    margin-top:15px;
+}
+
+.report-row {
+    display:flex;
+    justify-content:space-between;
+    font-size:.8rem;
+    padding:6px 0;
+    border-bottom:1px dashed #e5e7eb;
+}
+
+.report-total {
+    display:flex;
+    justify-content:space-between;
+    font-size:.85rem;
+    font-weight:800;
+    padding-top:10px;
+    margin-top:10px;
+    border-top:2px solid #e5e7eb;
+}
     </style>
 </head>
 <body>

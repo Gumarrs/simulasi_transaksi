@@ -120,17 +120,201 @@ $total_instrumen = mysqli_num_rows($query_assets);
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <style>
-body{ background:#f4f7f6; padding-bottom:80px; }
-.mobile-container{ max-width:480px; margin:auto; background:white; min-height:100vh; box-shadow:0 0 15px rgba(0,0,0,0.05); }
-.saldo-card{ background:linear-gradient(135deg,#0d6efd,#0b5ed7); border-radius:16px; color:white; }
-.bottom-nav{ position:fixed; bottom:0; width:100%; max-width:480px; background:white; border-top:1px solid #ddd; display:flex; justify-content:space-around; padding:10px 0; z-index:999; }
-.nav-item{ text-decoration:none; color:#6c757d; text-align:center; font-size:0.8rem; }
-.nav-item.active{ color:#0d6efd; font-weight:bold; }
-.nav-item i{ display:block; font-size:1.1rem; margin-bottom:2px; }
-.asset-card{ border-radius:14px; overflow:hidden; border:none; box-shadow:0 2px 10px rgba(0,0,0,0.05); }
-.asset-img{ height:120px; object-fit:cover; }
-.asset-list{ border-radius:14px; padding:12px; background:white; border:1px solid #eee; }
-.view-toggle .btn{ border-radius:10px; }
+body{
+    background:#eef2f7;
+    padding-bottom:85px;
+    font-family:'Segoe UI',sans-serif;
+}
+
+.mobile-container{
+    max-width:480px;
+    margin:auto;
+    background:#f8fafc;
+    min-height:100vh;
+    box-shadow:0 0 18px rgba(15,23,42,.08);
+}
+
+.topbar{
+    background:white;
+    border-bottom:1px solid #e5e7eb;
+    position:sticky;
+    top:0;
+    z-index:99;
+}
+
+.period-pill{
+    background:#eef6ff;
+    color:#0d6efd;
+    border-radius:999px;
+    padding:6px 12px;
+    font-size:.78rem;
+    font-weight:700;
+}
+
+.saldo-card{
+    background:linear-gradient(135deg,#111827,#0d6efd);
+    border-radius:24px;
+    color:white;
+    position:relative;
+    overflow:hidden;
+}
+
+.saldo-card:after{
+    content:"";
+    position:absolute;
+    width:150px;
+    height:150px;
+    right:-45px;
+    top:-55px;
+    background:rgba(255,255,255,.12);
+    border-radius:50%;
+}
+
+.market-title{
+    font-weight:800;
+    color:#111827;
+}
+
+.view-toggle .btn{
+    border-radius:12px;
+    width:36px;
+    height:36px;
+}
+
+.asset-card{
+    border-radius:20px;
+    overflow:hidden;
+    border:none;
+    background:white;
+    box-shadow:0 8px 22px rgba(15,23,42,.08);
+    transition:.2s;
+}
+
+.asset-card:active{
+    transform:scale(.98);
+}
+
+.asset-img{
+    height:125px;
+    object-fit:cover;
+    background:#f1f5f9;
+}
+
+.asset-body{
+    padding:12px;
+}
+
+.asset-badge{
+    display:inline-block;
+    background:#f1f5f9;
+    color:#334155;
+    border-radius:999px;
+    padding:4px 9px;
+    font-size:.68rem;
+    font-weight:700;
+    margin-bottom:7px;
+}
+
+.asset-name{
+    font-size:.86rem;
+    font-weight:800;
+    color:#111827;
+    min-height:35px;
+    margin-bottom:6px;
+}
+
+.asset-price{
+    color:#0d6efd;
+    font-weight:800;
+    font-size:.82rem;
+}
+
+.asset-sub{
+    color:#64748b;
+    font-size:.68rem;
+}
+
+.showroom-card{
+    background:linear-gradient(135deg,#1e293b,#2563eb);
+    color:white;
+}
+
+.showroom-card .asset-badge{
+    background:rgba(255,255,255,.16);
+    color:white;
+    border:1px solid rgba(255,255,255,.25);
+}
+
+.showroom-card .asset-name,
+.showroom-card .asset-price,
+.showroom-card .asset-sub{
+    color:white;
+}
+
+.asset-list{
+    border-radius:18px;
+    padding:12px;
+    background:white;
+    border:1px solid #e5e7eb;
+    box-shadow:0 6px 18px rgba(15,23,42,.06);
+    margin-bottom:10px;
+}
+
+.asset-list-img{
+    width:52px;
+    height:52px;
+    border-radius:14px;
+    object-fit:cover;
+    background:#f1f5f9;
+}
+
+.list-name{
+    font-weight:800;
+    color:#111827;
+    font-size:.9rem;
+}
+
+.list-category{
+    color:#64748b;
+    font-size:.72rem;
+}
+
+.list-price{
+    color:#0d6efd;
+    font-weight:800;
+    font-size:.82rem;
+}
+
+.bottom-nav{
+    position:fixed;
+    bottom:0;
+    width:100%;
+    max-width:480px;
+    background:white;
+    border-top:1px solid #e5e7eb;
+    display:flex;
+    justify-content:space-around;
+    padding:10px 0;
+    z-index:999;
+}
+
+.nav-item{
+    text-decoration:none;
+    color:#6c757d;
+    text-align:center;
+    font-size:.78rem;
+}
+
+.nav-item.active{
+    color:#0d6efd;
+    font-weight:bold;
+}
+
+.nav-item i{
+    display:block;
+    font-size:1.1rem;
+    margin-bottom:2px;
+}
 </style>
 </head>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
@@ -138,7 +322,7 @@ body{ background:#f4f7f6; padding-bottom:80px; }
 <body>
 
 <div class="mobile-container">
-    <div class="d-flex justify-content-between align-items-center p-3 border-bottom sticky-top bg-white">
+    <div class="topbar d-flex justify-content-between align-items-center p-3">
         <div>
             <span class="fw-bold text-primary">Periode <?php echo $active_period; ?></span>
             <span class="badge bg-<?php echo ($period_status == 'open') ? 'success' : 'danger'; ?>">
