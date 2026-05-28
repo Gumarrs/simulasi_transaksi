@@ -195,6 +195,10 @@ $deskripsi =
 </div>
 <?php 
 $is_disabled = ($period_status == 'closed') ? 'disabled' : '';
+$is_tour =
+    !empty($asset['group_name'])
+    &&
+    $asset['group_name'] == 'Tour';
 
 // ==========================================
 // KHUSUS MARKET YANG HARGANYA 0
@@ -237,6 +241,8 @@ if (
     $asset['tipe_simulasi'] != 'persentase'
     &&
     $asset['tipe_simulasi'] != 'edukasi'
+    &&
+    !$is_tour
 ): ?>
 
 <button 
@@ -255,6 +261,8 @@ if (
         $asset['tipe_simulasi'] == 'persentase'
         ||
         $asset['tipe_simulasi'] == 'edukasi'
+        ||
+        $is_tour
     ) {
         echo 'w-100';
     } else {
@@ -349,8 +357,22 @@ $is_showroom =
     &&
     $asset['group_name'] == 'Showroom';
 ?>
+<?php if($is_tour): ?>
 
-<?php if($is_showroom): ?>
+    <?php for($i=1;$i<=4;$i++): ?>
+
+        <button
+        type="button"
+        class="chip-btn"
+        onclick="selectQty(<?php echo $i; ?>,this)"
+        >
+            <?php echo $i; ?>
+        </button>
+
+    <?php endfor; ?>
+
+<?php elseif($is_showroom): ?>
+
 
     <?php for($i=1;$i<=7;$i++): ?>
 

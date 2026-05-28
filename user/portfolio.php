@@ -534,13 +534,35 @@ body {
                     // MARKET / SAHAM / BISNIS
                     // =====================================
 
-                    else {
+                // =====================================
+                // MARKET / SAHAM / BISNIS / TOUR
+                // =====================================
+
+                else {
+
+                    // KHUSUS TOUR
+                    if(
+                        !empty($row['group_name'])
+                        &&
+                        $row['group_name'] == 'Tour'
+                    ){
+
+                        $nilai_sekarang = 0;
+
+                        $modal_asli =
+                            floatval($row['total_modal_aktif']);
+
+                        $selisih = 0;
+
+                        $persentase = 0;
+
+                        $laba_potensial = 0;
+
+                    }
+                    else{
 
                         $nilai_sekarang =
                             $row['total_unit'] * $row['val_now'];
-
-                        $label_unit =
-                           
 
                         $modal_asli =
                             floatval($row['total_modal_aktif']);
@@ -555,7 +577,9 @@ body {
 
                         $laba_potensial =
                             $selisih;
+
                     }
+                }
 
                     $total_portfolio_value += $nilai_sekarang;
 

@@ -63,6 +63,7 @@ while ($asset = mysqli_fetch_assoc($q_assets)) {
     }
 
     // --- KONDISI 2: Cairkan profit dari periode SEKARANG (Khusus dijalankan saat CLOSED / Akhir Game) ---
+
     if ($period_status == 'closed') {
         $target_p = $active_period;
 
@@ -105,9 +106,196 @@ while ($asset = mysqli_fetch_assoc($q_assets)) {
 }
 
 
-// ====================================================================
-// B. AUTO JUAL SEMUA ASET SAAT SIMULASI SELESAI (STATUS = CLOSED)
-// ====================================================================
+        // ====================================================================
+        // B. AUTO JUAL SEMUA ASET SAAT SIMULASI SELESAI (STATUS = CLOSED)
+        // ====================================================================
+
+        // ====================================================================
+        // TOUR (PENGELUARAN HANGUS OTOMATIS PERIODE BERIKUTNYA)
+        // ====================================================================
+
+        $q_tour = mysqli_query($conn, "
+            SELECT *
+            FROM market_assets
+            WHERE group_name = 'Tour'
+        ");
+
+        while ($tour_asset = mysqli_fetch_assoc($q_tour)) {
+
+            $tour_asset_id = $tour_asset['id'];
+
+            if ($active_period <= 1) {
+                continue;
+            }
+
+            $target_p = $active_period - 1;
+
+            $q_cek = mysqli_query($conn, "
+                SELECT id
+                FROM transactions
+                WHERE
+                    user_id = '$user_id'
+                    AND asset_id = '$tour_asset_id'
+                    AND type = 'sell'
+                    AND qty > 0
+                    AND buy_period = '$target_p'
+                LIMIT 1
+            ");
+
+            if (mysqli_num_rows($q_cek) > 0) {
+                continue;
+            }
+
+            $q_buy = mysqli_query($conn, "
+                SELECT id, amount_money, qty, buy_price
+                FROM transactions
+                WHERE
+                    user_id = '$user_id'
+                    AND asset_id = '$tour_asset_id'
+                    AND type = 'buy'
+                    AND buy_period = '$target_p'
+                    AND is_active = 1
+                LIMIT 1
+            ");
+
+            if (mysqli_num_rows($q_buy) == 0) {
+                continue;
+            }
+
+            $buy = mysqli_fetch_assoc($q_buy);
+
+            $qty_beli = floatval($buy['qty']);
+            $harga_beli = floatval($buy['buy_price']);
+            $modal_asli = floatval($buy['amount_money']);
+
+            mysqli_query($conn, "
+                INSERT INTO transactions
+                (
+                    user_id,
+                    asset_id,
+                    period,
+                    type,
+                    amount_money,
+                    realized_profit,
+                    qty,
+                    buy_price,
+                    sell_price,
+                    buy_period
+                )
+                VALUES
+                (
+                    '$user_id',
+                    '$tour_asset_id',
+                    '$active_period',
+                    'sell',
+                    0,
+                    '-$modal_asli',
+                    '$qty_beli',
+                    '$harga_beli',
+                    0,
+                    '$target_p'
+                )
+            ");
+
+            mysqli_query($conn, "
+                UPDATE transactions
+                SET is_active = 0
+                WHERE id = '".$buy['id']."'
+            ");
+        }
+
+        // ====================================================================
+        // TOUR SAAT SIMULASI CLOSED
+        // Hanguskan Tour yang dibeli di periode aktif
+        // ====================================================================
+
+        if ($period_status == 'closed') {
+
+            $q_tour_closed = mysqli_query($conn, "
+                SELECT *
+                FROM market_assets
+                WHERE group_name = 'Tour'
+            ");
+
+            while ($tour_asset = mysqli_fetch_assoc($q_tour_closed)) {
+
+                $tour_asset_id = $tour_asset['id'];
+                $target_p = $active_period;
+
+                $q_cek = mysqli_query($conn, "
+                    SELECT id
+                    FROM transactions
+                    WHERE
+                        user_id = '$user_id'
+                        AND asset_id = '$tour_asset_id'
+                        AND type = 'sell'
+                        AND qty > 0
+                        AND buy_period = '$target_p'
+                    LIMIT 1
+                ");
+
+                if (mysqli_num_rows($q_cek) > 0) {
+                    continue;
+                }
+
+                $q_buy = mysqli_query($conn, "
+                    SELECT id, amount_money, qty, buy_price
+                    FROM transactions
+                    WHERE
+                        user_id = '$user_id'
+                        AND asset_id = '$tour_asset_id'
+                        AND type = 'buy'
+                        AND buy_period = '$target_p'
+                        AND is_active = 1
+                    LIMIT 1
+                ");
+
+                if (mysqli_num_rows($q_buy) == 0) {
+                    continue;
+                }
+
+                $buy = mysqli_fetch_assoc($q_buy);
+
+                $qty_beli = floatval($buy['qty']);
+                $harga_beli = floatval($buy['buy_price']);
+                $modal_asli = floatval($buy['amount_money']);
+
+                mysqli_query($conn, "
+                    INSERT INTO transactions
+                    (
+                        user_id,
+                        asset_id,
+                        period,
+                        type,
+                        amount_money,
+                        realized_profit,
+                        qty,
+                        buy_price,
+                        sell_price,
+                        buy_period
+                    )
+                    VALUES
+                    (
+                        '$user_id',
+                        '$tour_asset_id',
+                        '$active_period',
+                        'sell',
+                        0,
+                        '-$modal_asli',
+                        '$qty_beli',
+                        '$harga_beli',
+                        0,
+                        '$target_p'
+                    )
+                ");
+
+                mysqli_query($conn, "
+                    UPDATE transactions
+                    SET is_active = 0
+                    WHERE id = '".$buy['id']."'
+                ");
+            }
+        }
 
 // ====================================================================
 // EDUKASI (1X BENEFIT PER PERIODE BERIKUTNYA)
@@ -241,8 +429,8 @@ if ($period_status == 'closed') {
     $harga_jual_now = floatval($a['value_p' . $active_period]);
     $tipe_sim = $a['tipe_simulasi'];
 
-    // EDUKASI BUKAN ASET JUAL, JANGAN IKUT FORCE SELL AKHIR SIMULASI
-    if ($tipe_sim == 'edukasi') {
+    // EDUKASI DAN TOUR BUKAN ASET FORCE SELL AKHIR SIMULASI
+    if ($tipe_sim == 'edukasi' || $a['group_name'] == 'Tour') {
         continue;
     }
 

@@ -100,6 +100,8 @@
     $nama_aset = $asset['nama_aset'];
 
     $tipe_simulasi = $asset['tipe_simulasi'];
+    $group_name = $asset['group_name'] ?? '';
+    $is_tour = ($group_name == 'Tour');
 
     $val_now = floatval($asset['val_now']);
 
