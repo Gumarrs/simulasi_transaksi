@@ -20,17 +20,9 @@ $q_assets = mysqli_query($conn, "SELECT * FROM market_assets WHERE tipe_simulasi
 while ($asset = mysqli_fetch_assoc($q_assets)) {
     $asset_id = $asset['id'];
 
-    $is_bodong = strtolower(trim($asset['group_name'] ?? '')) == 'bodong';
-
     // --- KONDISI 1: Cairkan profit dari periode SEBELUMNYA (Rutin dijalankan saat OPEN) ---
     if ($active_period > 1) {
         $target_p = $active_period - 1;
-
-        if ($is_bodong && $target_p != 1) {
-            // Bodong hanya profit dari pembelian periode 1,
-            // cair saat periode 2 open.
-            continue;
-        }
 
         // Cek apakah profit untuk target periode ini sudah pernah dicairkan
         $q_cek = mysqli_query($conn, "SELECT id FROM transactions WHERE user_id='$user_id' AND asset_id='$asset_id' AND type='sell' AND qty=0 AND buy_period='$target_p'");
@@ -74,10 +66,6 @@ while ($asset = mysqli_fetch_assoc($q_assets)) {
 
     if ($period_status == 'closed') {
         $target_p = $active_period;
-
-        if ($is_bodong) {
-    continue;
-        }
 
         // Cek apakah profit untuk periode aktif saat ini sudah dicairkan
         $q_cek = mysqli_query($conn, "SELECT id FROM transactions WHERE user_id='$user_id' AND asset_id='$asset_id' AND type='sell' AND qty=0 AND buy_period='$target_p'");
@@ -432,109 +420,7 @@ $_SESSION['edukasi_notifications'][]=[
 
 }   
 
-// ====================================================================
-// AUTO CAIR LABA BISNIS / PROPERTI SAAT CLOSED PERIODE 1 & 2
-// Jika user lupa ambil manual di detail_aset.php
-// HANYA LABA, BUKAN POKOK
-// ====================================================================
-
-// ====================================================================
-// AUTO CAIR LABA BISNIS / PROPERTI JIKA USER LUPA AMBIL MANUAL
-// P2 CLOSED => cairkan laba P1 jika belum diambil
-// P3 CLOSED => cairkan laba P2 jika belum diambil
-// HANYA LABA, BUKAN POKOK
-// ====================================================================
-
-if ($period_status == 'closed' && $active_period > 1) {
-
-    $target_p = $active_period - 1;
-
-    $q_laba_auto = mysqli_query($conn, "
-        SELECT *
-        FROM market_assets
-        WHERE tipe_simulasi IN ('bisnis', 'properti')
-    ");
-
-    while ($asset_laba = mysqli_fetch_assoc($q_laba_auto)) {
-
-        $asset_id_laba = $asset_laba['id'];
-
-        $q_cek = mysqli_query($conn, "
-            SELECT id
-            FROM transactions
-            WHERE user_id = '$user_id'
-            AND asset_id = '$asset_id_laba'
-            AND type = 'sell'
-            AND qty = 0
-            AND buy_period = '$target_p'
-            LIMIT 1
-        ");
-
-        if (mysqli_num_rows($q_cek) > 0) {
-            continue;
-        }
-
-        $q_unit = mysqli_query($conn, "
-            SELECT
-                SUM(CASE WHEN type='buy' THEN qty ELSE 0 END)
-                -
-                SUM(CASE WHEN type='sell' AND qty > 0 THEN qty ELSE 0 END)
-                AS sisa_unit
-            FROM transactions
-            WHERE user_id = '$user_id'
-            AND asset_id = '$asset_id_laba'
-        ");
-
-        $d_unit = mysqli_fetch_assoc($q_unit);
-        $sisa_unit = floatval($d_unit['sisa_unit']);
-
-        if ($sisa_unit <= 0) {
-            continue;
-        }
-
-        $laba_per_unit = floatval($asset_laba['laba_p' . $target_p]);
-        $total_laba = $sisa_unit * $laba_per_unit;
-
-        if ($total_laba <= 0) {
-            continue;
-        }
-
-        mysqli_query($conn, "
-            UPDATE users
-            SET balance = balance + '$total_laba'
-            WHERE id = '$user_id'
-        ");
-
-        mysqli_query($conn, "
-            INSERT INTO transactions
-            (
-                user_id,
-                asset_id,
-                period,
-                type,
-                amount_money,
-                qty,
-                buy_price,
-                realized_profit,
-                buy_period
-            )
-            VALUES
-            (
-                '$user_id',
-                '$asset_id_laba',
-                '$active_period',
-                'sell',
-                '$total_laba',
-                0,
-                0,
-                '$total_laba',
-                '$target_p'
-            )
-        ");
-    }
-}
-
-if ($period_status == 'closed' && $active_period == 3) {
+if ($period_status == 'closed') {
     
     $q_all_assets = mysqli_query($conn, "SELECT * FROM market_assets");
 
@@ -542,124 +428,6 @@ if ($period_status == 'closed' && $active_period == 3) {
     $a_id = $a['id'];
     $harga_jual_now = floatval($a['value_p' . $active_period]);
     $tipe_sim = $a['tipe_simulasi'];
-
-
-
-    if ($tipe_sim == 'properti') {
-  
-
-        $q_prop = mysqli_query($conn, "
-    SELECT
-        SUM(
-            CASE
-                WHEN with_insurance = 1 THEN remaining_qty
-                ELSE 0
-            END
-        ) AS sisa_asuransi,
-
-        SUM(
-            CASE
-                WHEN with_insurance = 0 THEN remaining_qty
-                ELSE 0
-            END
-        ) AS sisa_tanpa_asuransi,
-
-        SUM(qty * buy_price) / NULLIF(SUM(qty), 0) AS avg_buy_price
-    FROM transactions
-    WHERE user_id = '$user_id'
-    AND asset_id = '$a_id'
-    AND type = 'buy'
-    AND remaining_qty > 0
-");
-
-        $prop = mysqli_fetch_assoc($q_prop);
-
-        $sisa_asuransi = floatval($prop['sisa_asuransi']);
-        $sisa_tanpa_asuransi = floatval($prop['sisa_tanpa_asuransi']);
-        $avg_buy_price = floatval($prop['avg_buy_price']);
-
-        if (($sisa_asuransi + $sisa_tanpa_asuransi) <= 0) {
-            continue;
-        }
-
-        $harga_asuransi = $harga_jual_now;
-        $harga_tanpa_asuransi = $harga_jual_now;
-
-        if ($active_period == 3) {
-            $harga_tanpa_asuransi = 0;
-        }
-
-        $hasil_asuransi = $sisa_asuransi * $harga_asuransi;
-        $hasil_tanpa_asuransi = $sisa_tanpa_asuransi * $harga_tanpa_asuransi;
-
-        if ($sisa_asuransi > 0) {
-            $profit_asuransi = $hasil_asuransi - ($sisa_asuransi * $avg_buy_price);
-
-            mysqli_query($conn, "
-                INSERT INTO transactions
-                (
-                    user_id, asset_id, period, type, amount_money,
-                    realized_profit, qty, buy_price, sell_price,
-                    buy_period, with_insurance
-                )
-                VALUES
-                (
-                    '$user_id', '$a_id', '$active_period', 'sell',
-                    '$hasil_asuransi', '$profit_asuransi', '$sisa_asuransi',
-                    '$avg_buy_price', '$harga_asuransi',
-                    '$active_period', 1
-                )
-            ");
-        }
-
-        if ($sisa_tanpa_asuransi > 0) {
-            $profit_tanpa_asuransi = $hasil_tanpa_asuransi - ($sisa_tanpa_asuransi * $avg_buy_price);
-
-            mysqli_query($conn, "
-                INSERT INTO transactions
-                (
-                    user_id, asset_id, period, type, amount_money,
-                    realized_profit, qty, buy_price, sell_price,
-                    buy_period, with_insurance
-                )
-                VALUES
-                (
-                    '$user_id', '$a_id', '$active_period', 'sell',
-                    '$hasil_tanpa_asuransi', '$profit_tanpa_asuransi', '$sisa_tanpa_asuransi',
-                    '$avg_buy_price', '$harga_tanpa_asuransi',
-                    '$active_period', 0
-                )
-            ");
-        }
-
-        $total_hasil_properti = $hasil_asuransi + $hasil_tanpa_asuransi;
-
-        if ($total_hasil_properti > 0) {
-            mysqli_query($conn, "
-                UPDATE users
-                SET balance = balance + '$total_hasil_properti'
-                WHERE id = '$user_id'
-            ");
-        }
-
-        mysqli_query($conn, "
-    UPDATE transactions
-    SET remaining_qty = 0
-    WHERE user_id = '$user_id'
-    AND asset_id = '$a_id'
-    AND type = 'buy'
-    AND remaining_qty > 0
-");
-
-        $_SESSION['properti_force_sell_notifications'][] = [
-            'aset' => $a['nama_aset'],
-            'unit_asuransi' => $sisa_asuransi,
-            'unit_tanpa_asuransi' => $sisa_tanpa_asuransi,
-            'hasil_jual' => $total_hasil_properti
-        ];
-
-        continue;
-    }
 
     // EDUKASI DAN TOUR BUKAN ASET FORCE SELL AKHIR SIMULASI
     if ($tipe_sim == 'edukasi' || $a['group_name'] == 'Tour') {
@@ -703,20 +471,30 @@ if(mysqli_num_rows($q_force) > 0){
         if (($tipe_sim != 'persentase' && $sisa_qty > 0) || ($tipe_sim == 'persentase' && $sisa_modal > 0)) {
             
             if ($tipe_sim == 'persentase') {
+                $hasil_penjualan = $sisa_modal;
+                $realized_profit = 0; 
+                $qty_jual = $sisa_modal; 
+            } else {
 
-    $is_bodong =
-        strtolower(trim($a['group_name'] ?? '')) == 'bodong';
+    // KHUSUS PROPERTI:
+    // Jika periode 3 dan pembelian tidak memakai asuransi, harga jualnya menjadi 0.
+    if ($tipe_sim == 'properti' && $active_period == 3) {
+        $q_asuransi = mysqli_query($conn, "
+            SELECT MAX(with_insurance) AS ada_asuransi
+            FROM transactions
+            WHERE user_id='$user_id'
+            AND asset_id='$a_id'
+            AND type='buy'
+            AND is_active=1
+        ");
 
-    if ($is_bodong) {
-        $hasil_penjualan = 0;
-        $realized_profit = -$sisa_modal;
-        $qty_jual = $sisa_modal;
-    } else {
-        $hasil_penjualan = $sisa_modal;
-        $realized_profit = 0;
-        $qty_jual = $sisa_modal;
+        $d_asuransi = mysqli_fetch_assoc($q_asuransi);
+        $ada_asuransi = intval($d_asuransi['ada_asuransi'] ?? 0);
+
+        if ($ada_asuransi <= 0) {
+            $harga_jual_now = 0;
+        }
     }
-    } else {
 
     $hasil_penjualan =
     $sisa_qty * $harga_jual_now;

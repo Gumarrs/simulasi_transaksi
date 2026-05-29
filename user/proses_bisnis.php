@@ -27,6 +27,41 @@ $kolom_laba = "laba_p" . $target_p;
 $q_asset = mysqli_query($conn, "SELECT *, $kolom_val AS val_now, $kolom_laba AS laba_now FROM market_assets WHERE id='$asset_id'");
 $asset = mysqli_fetch_assoc($q_asset);
 $nama_aset = $asset['nama_aset'];
+function kurangiRemainingQtyPropertiFIFO($conn, $user_id, $asset_id, $qty_jual)
+{
+    $sisa_jual = floatval($qty_jual);
+
+    $q_lots = mysqli_query($conn, "
+        SELECT id, remaining_qty
+        FROM transactions
+        WHERE user_id = '$user_id'
+        AND asset_id = '$asset_id'
+        AND type = 'buy'
+        AND remaining_qty > 0
+        ORDER BY id ASC
+    ");
+
+    while ($lot = mysqli_fetch_assoc($q_lots)) {
+
+        if ($sisa_jual <= 0) {
+            break;
+        }
+
+        $lot_id = (int)$lot['id'];
+        $remaining = floatval($lot['remaining_qty']);
+
+        $dipakai = min($remaining, $sisa_jual);
+        $remaining_baru = $remaining - $dipakai;
+
+        mysqli_query($conn, "
+            UPDATE transactions
+            SET remaining_qty = '$remaining_baru'
+            WHERE id = '$lot_id'
+        ");
+
+        $sisa_jual -= $dipakai;
+    }
+}
 
 // Cek apakah user sudah pernah membuat keputusan Laba untuk periode ini
 $q_cek = mysqli_query($conn, "SELECT id FROM transactions WHERE user_id='$user_id' AND asset_id='$asset_id' AND type='sell' AND qty=0 AND buy_period='$target_p'");
@@ -38,8 +73,58 @@ $html_rincian = "";
 if (mysqli_num_rows($q_cek) == 0) {
     
     // 1. HITUNG SISA UNIT AKTUAL REAL-TIME (Untuk mencegah Jual berkali-kali)
-    $q_aktual = mysqli_query($conn, "SELECT SUM(CASE WHEN type='buy' THEN qty ELSE 0 END) - SUM(CASE WHEN type='sell' AND qty > 0 THEN qty ELSE 0 END) AS sisa_aktual FROM transactions WHERE user_id='$user_id' AND asset_id='$asset_id'");
-    $sisa_unit_aktual = floatval(mysqli_fetch_assoc($q_aktual)['sisa_aktual']);
+        if ($asset['tipe_simulasi'] == 'properti') {
+
+    $q_aktual = mysqli_query($conn, "
+        SELECT
+            SUM(remaining_qty) AS sisa_aktual,
+
+            SUM(
+                CASE
+                    WHEN with_insurance = 1 THEN remaining_qty
+                    ELSE 0
+                END
+            ) AS sisa_asuransi,
+
+            SUM(
+                CASE
+                    WHEN with_insurance = 0 THEN remaining_qty
+                    ELSE 0
+                END
+            ) AS sisa_tanpa_asuransi
+        FROM transactions
+        WHERE user_id='$user_id'
+        AND asset_id='$asset_id'
+        AND type='buy'
+        AND remaining_qty > 0
+    ");
+
+} else {
+
+    $q_aktual = mysqli_query($conn, "
+        SELECT
+            SUM(
+                CASE
+                    WHEN type='buy' THEN qty
+                    WHEN type='sell' AND qty > 0 THEN -qty
+                    ELSE 0
+                END
+            ) AS sisa_aktual,
+
+            0 AS sisa_asuransi,
+            0 AS sisa_tanpa_asuransi
+        FROM transactions
+        WHERE user_id='$user_id'
+        AND asset_id='$asset_id'
+    ");
+
+}
+
+        $data_aktual = mysqli_fetch_assoc($q_aktual);
+
+        $sisa_unit_aktual = floatval($data_aktual['sisa_aktual']);
+        $sisa_asuransi = floatval($data_aktual['sisa_asuransi']);
+        $sisa_tanpa_asuransi = floatval($data_aktual['sisa_tanpa_asuransi']);
 
     // PROTEKSI UTAMA: Jika aset fisik sudah 0, blokir paksa
     if ($sisa_unit_aktual <= 0) {
@@ -75,21 +160,165 @@ if (mysqli_num_rows($q_cek) == 0) {
     $realized_profit = 0;
     
     if ($keputusan == 'sell') {
+        if ($asset['tipe_simulasi'] == 'properti') {
+
+    $harga_jual_asuransi = floatval($asset['val_now']);
+    $harga_jual_tanpa_asuransi = floatval($asset['val_now']);
+
+    if ($active_period == 3) {
+        $harga_jual_tanpa_asuransi = 0;
+    }
+
+    $q_avg = mysqli_query($conn, "
+        SELECT
+            SUM(qty * buy_price) / NULLIF(SUM(qty), 0) AS avg_buy_price
+        FROM transactions
+        WHERE user_id='$user_id'
+        AND asset_id='$asset_id'
+        AND type='buy'
+    ");
+
+    $d_avg = mysqli_fetch_assoc($q_avg);
+    $avg_buy_price = floatval($d_avg['avg_buy_price']);
+
+    $hasil_penjualan_asuransi = $sisa_asuransi * $harga_jual_asuransi;
+    $hasil_penjualan_tanpa_asuransi = $sisa_tanpa_asuransi * $harga_jual_tanpa_asuransi;
+
+    $hasil_penjualan = $hasil_penjualan_asuransi + $hasil_penjualan_tanpa_asuransi;
+
+    $modal_asli = $sisa_unit_aktual * $avg_buy_price;
+    $realized_profit = $hasil_penjualan - $modal_asli;
+
+    if ($sisa_asuransi > 0) {
+        $profit_asuransi =
+            $hasil_penjualan_asuransi
+            -
+            ($sisa_asuransi * $avg_buy_price);
+
+        mysqli_query($conn, "
+            INSERT INTO transactions
+            (
+                user_id,
+                asset_id,
+                period,
+                type,
+                amount_money,
+                qty,
+                buy_price,
+                sell_price,
+                realized_profit,
+                buy_period,
+                with_insurance
+            )
+            VALUES
+            (
+                '$user_id',
+                '$asset_id',
+                '$active_period',
+                'sell',
+                '$hasil_penjualan_asuransi',
+                '$sisa_asuransi',
+                '$avg_buy_price',
+                '$harga_jual_asuransi',
+                '$profit_asuransi',
+                '$active_period',
+                1
+            )
+        ");
+    }
+
+    if ($sisa_tanpa_asuransi > 0) {
+        $profit_tanpa_asuransi =
+            $hasil_penjualan_tanpa_asuransi
+            -
+            ($sisa_tanpa_asuransi * $avg_buy_price);
+
+        mysqli_query($conn, "
+            INSERT INTO transactions
+            (
+                user_id,
+                asset_id,
+                period,
+                type,
+                amount_money,
+                qty,
+                buy_price,
+                sell_price,
+                realized_profit,
+                buy_period,
+                with_insurance
+            )
+            VALUES
+            (
+                '$user_id',
+                '$asset_id',
+                '$active_period',
+                'sell',
+                '$hasil_penjualan_tanpa_asuransi',
+                '$sisa_tanpa_asuransi',
+                '$avg_buy_price',
+                '$harga_jual_tanpa_asuransi',
+                '$profit_tanpa_asuransi',
+                '$active_period',
+                0
+            )
+        "); 
+    }
+    kurangiRemainingQtyPropertiFIFO($conn, $user_id, $asset_id, $sisa_unit_aktual);
+    } else {
+
         $harga_jual = floatval($asset['val_now']);
-        // Menggunakan unit AKTUAL, bukan unit laba
         $hasil_penjualan = $sisa_unit_aktual * $harga_jual;
-        
-        // Perhitungan Modal Rata-rata 
-        $q_avg = mysqli_query($conn, "SELECT SUM(amount_money) as total_uang, SUM(qty) as total_qty FROM transactions WHERE user_id='$user_id' AND asset_id='$asset_id' AND type='buy'");
+
+        $q_avg = mysqli_query($conn, "
+            SELECT
+                SUM(amount_money) as total_uang,
+                SUM(qty) as total_qty
+            FROM transactions
+            WHERE user_id='$user_id'
+            AND asset_id='$asset_id'
+            AND type='buy'
+        ");
+
         $d_avg = mysqli_fetch_assoc($q_avg);
-        $avg_buy_price = ($d_avg['total_qty'] > 0) ? (floatval($d_avg['total_uang']) / floatval($d_avg['total_qty'])) : 0;
-        
+        $avg_buy_price =
+            ($d_avg['total_qty'] > 0)
+            ? (floatval($d_avg['total_uang']) / floatval($d_avg['total_qty']))
+            : 0;
+
         $modal_asli = $sisa_unit_aktual * $avg_buy_price;
         $realized_profit = $hasil_penjualan - $modal_asli;
 
-        // Eksekusi pelepasan aset (jual)
-        mysqli_query($conn, "INSERT INTO transactions (user_id, asset_id, period, type, amount_money, qty, buy_price, realized_profit, buy_period) VALUES ('$user_id', '$asset_id', '$active_period', 'sell', '$hasil_penjualan', '$sisa_unit_aktual', '$harga_jual', '$realized_profit', '$active_period')");
-        
+        mysqli_query($conn, "
+            INSERT INTO transactions
+            (
+                user_id,
+                asset_id,
+                period,
+                type,
+                amount_money,
+                qty,
+                buy_price,
+                sell_price,
+                realized_profit,
+                buy_period
+            )
+            VALUES
+            (
+                '$user_id',
+                '$asset_id',
+                '$active_period',
+                'sell',
+                '$hasil_penjualan',
+                '$sisa_unit_aktual',
+                '$avg_buy_price',
+                '$harga_jual',
+                '$realized_profit',
+                '$active_period'
+            )
+        ");
+
+    }
         $total_uang_masuk += $hasil_penjualan;
         
         $html_rincian .= "

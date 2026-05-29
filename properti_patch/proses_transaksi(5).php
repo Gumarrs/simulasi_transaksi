@@ -21,13 +21,13 @@
 
     $tipe = $_POST['tipe'];
 
-    $nominal = floatval($_POST['nominal']);
-    
-    $with_insurance = isset($_POST['with_insurance'])
-    ? (int)$_POST['with_insurance']
-    : 0;
+    $with_insurance = isset($_POST['with_insurance']) ? (int)$_POST['with_insurance'] : 0;
 
-    $insurance_price = 1000000;
+    $qty_input = isset($_POST['qty_input']) ? floatval($_POST['qty_input']) : 0;
+
+    $biaya_asuransi_per_unit = 1000000;
+
+    $nominal = floatval($_POST['nominal']);
 
     if ($nominal <= 0) {
 
@@ -89,124 +89,37 @@
         FROM market_assets
         WHERE id = '$asset_id'
     ");
-        $asset = mysqli_fetch_assoc($q_asset);
 
-        if (!$asset) {
+    $asset = mysqli_fetch_assoc($q_asset);
 
-            echo "
-            <script>
-                alert('Aset tidak ditemukan');
-                window.location.href='dashboard.php';
-            </script>
-            ";
+    if (!$asset) {
 
-            exit;
-        }
+        echo "
+        <script>
+            alert('Aset tidak ditemukan');
+            window.location.href='dashboard.php';
+        </script>
+        ";
 
-        $is_bodong =
-            strtolower(trim($asset['group_name'] ?? '')) == 'bodong';
+        exit;
+    }
 
-        if ($periode_aktif >= 3 && $is_bodong) {
-            echo '
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <meta charset="UTF-8">
-                <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-            </head>
-            <body>
-            <script>
-            Swal.fire({
-                icon: "error",
-                title: "Aset Gagal / Hangus",
-                html: `
-                    <div style="text-align:left">
-                        <p>
-                            Aset ini sudah dinyatakan <b>gagal / hangus</b>.
-                        </p>
-
-                        <hr>
-
-                        <table style="width:100%">
-                            <tr>
-                                <td>Nilai Aset</td>
-                                <td align="right">
-                                    <b style="color:red;">Rp 0</b>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td>Status</td>
-                                <td align="right">
-                                    <b>Tidak dapat ditransaksikan</b>
-                                </td>
-                            </tr>
-                        </table>
-
-                        <p class="mt-3 mb-0" style="font-size:0.85rem;color:#666;">
-                            Instrumen ini tidak lagi tersedia untuk pembelian maupun penjualan.
-                        </p>
-                    </div>
-                `,
-                confirmButtonText: "Kembali ke Portofolio",
-                confirmButtonColor: "#dc3545",
-                allowOutsideClick: false,
-                allowEscapeKey: false
-            }).then(() => {
-                window.location.href = "portfolio.php";
-            });
-            </script>
-            </body>
-            </html>
-            ';
-
-            exit;
-        }
     $nama_aset = $asset['nama_aset'];
 
     $tipe_simulasi = $asset['tipe_simulasi'];
     $group_name = $asset['group_name'] ?? '';
     $is_tour = ($group_name == 'Tour');
 
+    // with_insurance hanya berlaku untuk pembelian properti.
+    if ($tipe_simulasi != 'properti' || $tipe != 'buy') {
+        $with_insurance = 0;
+    }
+
     $val_now = floatval($asset['val_now']);
 
     $bunga_now = floatval($asset['bunga_now']);
 
     $multiplier = floatval($asset['multiplier']);
-            function kurangiRemainingQtyPropertiFIFO($conn, $user_id, $asset_id, $qty_jual)
-        {
-            $sisa_jual = floatval($qty_jual);
-
-            $q_lots = mysqli_query($conn, "
-                SELECT id, remaining_qty
-                FROM transactions
-                WHERE user_id = '$user_id'
-                AND asset_id = '$asset_id'
-                AND type = 'buy'
-                AND remaining_qty > 0
-                ORDER BY id ASC
-            ");
-
-            while ($lot = mysqli_fetch_assoc($q_lots)) {
-
-                if ($sisa_jual <= 0) {
-                    break;
-                }
-
-                $lot_id = (int)$lot['id'];
-                $remaining = floatval($lot['remaining_qty']);
-
-                $dipakai = min($remaining, $sisa_jual);
-                $remaining_baru = $remaining - $dipakai;
-
-                mysqli_query($conn, "
-                    UPDATE transactions
-                    SET remaining_qty = '$remaining_baru'
-                    WHERE id = '$lot_id'
-                ");
-
-                $sisa_jual -= $dipakai;
-            }
-        }
 
 
     // ======================================
@@ -248,33 +161,19 @@
 
             }
 
-        if ($tipe_simulasi == 'properti' && $tipe == 'buy') {
-
-            $harga_per_unit =
-                $val_now
-                +
-                (
-                    $with_insurance == 1
-                    ? $insurance_price
-                    : 0
+            // KHUSUS PROPERTI:
+            // Qty diambil dari input jumlah unit, karena nominal bisa berisi tambahan asuransi.
+            if ($tipe_simulasi == 'properti' && $qty_input > 0) {
+                $qty = $qty_input;
+            } else {
+                $qty=
+                round(
+                    $nominal/$val_now,
+                    4
                 );
-
-            $qty =
-            round(
-                $nominal / $harga_per_unit,
-                4
-            );
-
-        } else {
-
-            $qty =
-            round(
-                $nominal / $val_now,
-                4
-            );
+            }
 
         }
-    }
 
 
     // ======================================
@@ -347,57 +246,18 @@
         )>0
     )
     {
-        echo '
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <meta charset="UTF-8">
-            <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-        </head>
-        <body>
+
+        echo "
+
         <script>
-        Swal.fire({
-            icon: "info",
-            title: "Pendidikan Sudah Diambil",
-            html: `
-                <div style="text-align:left">
-                    <p>
-                        Anda sudah mengambil pendidikan ini pada periode berjalan.
-                    </p>
 
-                    <hr>
+        alert('Anda sudah memiliki pendidikan ini');
 
-                    <table style="width:100%">
-                        <tr>
-                            <td>Status</td>
-                            <td align="right">
-                                <b>Sudah Dimiliki</b>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td>Ketentuan</td>
-                            <td align="right">
-                                <b>1x pembelian</b>
-                            </td>
-                        </tr>
-                    </table>
+        location='portfolio.php';
 
-                    <p class="mt-3 mb-0" style="font-size:0.85rem;color:#666;">
-                        Silakan lanjutkan simulasi atau pilih instrumen lain.
-                    </p>
-                </div>
-            `,
-            confirmButtonText: "Mengerti",
-            confirmButtonColor: "#0d6efd",
-            allowOutsideClick: false,
-            allowEscapeKey: false
-        }).then(() => {
-            window.location.href = "portfolio.php";
-        });
         </script>
-        </body>
-        </html>
-        ';
+
+        ";
 
         exit;
 
@@ -448,6 +308,13 @@
 
         $buy_price = $val_now;
 
+        // KHUSUS PROPERTI:
+        // Asuransi Rp 1.000.000 per unit dimasukkan sebagai biaya beli per unit,
+        // supaya modal portofolio dan profit/loss tetap akurat.
+        if ($tipe_simulasi == 'properti' && $with_insurance == 1) {
+            $buy_price = $val_now + $biaya_asuransi_per_unit;
+        }
+
         $buy_period = $periode_aktif;
 
         mysqli_query($conn, "
@@ -459,7 +326,6 @@
                 type,
                 amount_money,
                 qty,
-                remaining_qty,
                 buy_price,
                 buy_period,
                 maturity_period,
@@ -473,7 +339,6 @@
                 '$periode_aktif',
                 'buy',
                 '$nominal',
-                '$qty',
                 '$qty',
                 '$buy_price',
                 '$buy_period',
@@ -669,6 +534,27 @@
         // ======================================
 
         $sell_price = $val_now;
+
+        // KHUSUS PROPERTI:
+        // Saat periode 3, properti tanpa asuransi nilai jualnya 0.
+        // Properti dengan asuransi tetap memakai value_p3.
+        if ($tipe_simulasi == 'properti' && $periode_aktif == 3) {
+            $q_asuransi = mysqli_query($conn, "
+                SELECT MAX(with_insurance) AS ada_asuransi
+                FROM transactions
+                WHERE user_id='$user_id'
+                AND asset_id='$asset_id'
+                AND type='buy'
+                AND is_active=1
+            ");
+
+            $d_asuransi = mysqli_fetch_assoc($q_asuransi);
+            $ada_asuransi = intval($d_asuransi['ada_asuransi'] ?? 0);
+
+            if ($ada_asuransi <= 0) {
+                $sell_price = 0;
+            }
+        }
         
         // KUNCI PENTING: Matikan bonus laba di sini agar tidak dobel.
         // Laba/Bagi Hasil bisnis HANYA diberikan melalui Pop-Up (proses_bisnis.php)
@@ -733,15 +619,11 @@
                 '$hasil_penjualan',
                 '$realized_profit',
                 '$qty',
-                '$avg_buy_price',
+                '0',
                 '$sell_price',
                 '$periode_aktif'
             )
         ");
-
-        if ($tipe_simulasi == 'properti') {
-        kurangiRemainingQtyPropertiFIFO($conn, $user_id, $asset_id, $qty);
-        }
 
 
         // ======================================

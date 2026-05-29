@@ -42,7 +42,7 @@ $unclaimed_yield = 0;
 $sisa_unit_bisnis = 0;
 $val_jual_sekarang = 0;
 
-if ( ( $asset['tipe_simulasi'] == 'bisnis' || $asset['tipe_simulasi'] == 'properti' ) && $active_period > 1 ) {
+if (($asset['tipe_simulasi'] == 'bisnis' || $asset['tipe_simulasi'] == 'properti') && $active_period > 1) {
     $target_p = $active_period - 1;
     // Cek di database, apakah user sudah mengklaim laba periode ini?
     $q_cek_laba = mysqli_query($conn, "SELECT id FROM transactions WHERE user_id='$user_id' AND asset_id='$asset_id' AND type='sell' AND qty=0 AND buy_period='$target_p'");
@@ -54,7 +54,29 @@ if ( ( $asset['tipe_simulasi'] == 'bisnis' || $asset['tipe_simulasi'] == 'proper
         if ($sisa_unit_bisnis > 0) {
             $tampilkan_popup_bisnis = true;
             $unclaimed_yield = $sisa_unit_bisnis * floatval($asset['laba_p' . $target_p]);
-            $val_jual_sekarang = $sisa_unit_bisnis * floatval($asset['val_now']);
+            $harga_jual_popup = floatval($asset['val_now']);
+
+            // KHUSUS PROPERTI:
+            // Jika sudah periode 3 dan pembelian tanpa asuransi, harga jual tampil Rp 0.
+            if ($asset['tipe_simulasi'] == 'properti' && $active_period == 3) {
+                $q_asuransi_popup = mysqli_query($conn, "
+                    SELECT MAX(with_insurance) AS ada_asuransi
+                    FROM transactions
+                    WHERE user_id='$user_id'
+                    AND asset_id='$asset_id'
+                    AND type='buy'
+                    AND is_active=1
+                ");
+
+                $d_asuransi_popup = mysqli_fetch_assoc($q_asuransi_popup);
+                $ada_asuransi_popup = intval($d_asuransi_popup['ada_asuransi'] ?? 0);
+
+                if ($ada_asuransi_popup <= 0) {
+                    $harga_jual_popup = 0;
+                }
+            }
+
+            $val_jual_sekarang = $sisa_unit_bisnis * $harga_jual_popup;
         }
     }
 }
@@ -195,14 +217,6 @@ $deskripsi =
 </div>
 <?php 
 $is_disabled = ($period_status == 'closed') ? 'disabled' : '';
-
-$is_bodong =
-    strtolower(trim($asset['group_name'] ?? '')) == 'bodong';
-
-if ($is_bodong && $active_period >= 3) {
-    $is_disabled = 'disabled';
-}
-
 $is_tour =
     !empty($asset['group_name'])
     &&
@@ -298,7 +312,8 @@ if (
                     <input type="hidden" name="asset_id" value="<?php echo $asset_id; ?>">
                     <input type="hidden" name="tipe" id="tipeInput">
                     <input type="hidden" name="nominal" id="finalNominal">
-                    <input type="hidden" name="with_insurance" id="withInsurance" value="0">
+                    <input type="hidden" name="with_insurance" id="withInsuranceInput" value="0">
+                    <input type="hidden" name="qty_input" id="qtyInput" value="0">
 
                     <div class="d-flex justify-content-between mb-3 p-2 bg-light rounded">
                         <small class="text-muted">Aset Anda:</small>
@@ -310,32 +325,7 @@ if (
                             <?php endif; ?>
                         </small>
                     </div>
-                    <?php if($asset['tipe_simulasi'] == 'properti'): ?>
-                    <div id="insuranceBox" class="mb-3" style="display:none;">
-                        <label class="small fw-bold mb-2">
-                            Pilihan Properti
-                        </label>
 
-                        <div class="d-grid gap-2">
-                            <button
-                                type="button"
-                                class="btn btn-outline-primary btn-sm fw-bold insurance-btn active"
-                                onclick="selectInsurance(0, this)"
-                            >
-                                Apartkos Saja
-                            </button>
-
-                            <button
-                                type="button"
-                                class="btn btn-outline-success btn-sm fw-bold insurance-btn"
-                                onclick="selectInsurance(1, this)"
-                            >
-                                Apartkos + Asuransi (+ Rp 1.000.000 / Unit)
-                            </button>
-                        </div>
-                    </div>
-
-                    <?php endif; ?>
                     <label class="small fw-bold mb-2">
                         <?php echo $asset['tipe_simulasi'] == 'persentase' ? 'Pilih / Input Nominal (Rp)' : 'Pilih Jumlah ('.$asset['satuan'].')'; ?>
                     </label>
@@ -480,6 +470,47 @@ $is_showroom =
                 >
             </div>
 
+                    <?php if($asset['tipe_simulasi']=='properti'): ?>
+                    <div class="mb-3" id="insuranceBox" style="display:none;">
+                        <label class="small fw-bold mb-2">Pilihan Properti</label>
+
+                        <div class="border rounded-3 p-2 bg-light">
+                            <div class="form-check mb-2">
+                                <input
+                                    class="form-check-input"
+                                    type="radio"
+                                    name="insurance_choice"
+                                    id="apartkosOnly"
+                                    value="0"
+                                    checked
+                                    onchange="setInsuranceChoice(); calc();"
+                                >
+                                <label class="form-check-label fw-bold small" for="apartkosOnly">
+                                    Apartkos saja
+                                </label>
+                            </div>
+
+                            <div class="form-check">
+                                <input
+                                    class="form-check-input"
+                                    type="radio"
+                                    name="insurance_choice"
+                                    id="apartkosInsurance"
+                                    value="1"
+                                    onchange="setInsuranceChoice(); calc();"
+                                >
+                                <label class="form-check-label fw-bold small" for="apartkosInsurance">
+                                    Apartkos + Asuransi
+                                    <span class="text-success">(+ Rp 1.000.000 / unit)</span>
+                                </label>
+                                <div class="text-muted small mt-1">
+                                    Jika masuk periode 3, nilai jual tetap mengikuti nilai properti. Tanpa asuransi, nilai jual periode 3 menjadi Rp 0.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <?php endif; ?>
+
                     <div class="text-center py-2">
                         <small class="text-muted">Total Bayar/Terima:</small>
                         <h3 class="fw-bold text-primary" id="viewNominal">Rp 0</h3>
@@ -527,11 +558,22 @@ const price = <?php echo floatval($asset['val_now']); ?>;
 const mult = <?php echo $multiplier; ?>;
 const cash = <?php echo $saldo_sekarang; ?>;
 const stock = <?php echo $total_unit_dimiliki; ?>; // stock is Nominal (Rp) if persentase, Unit if others
-const insurancePrice = 1000000; //Biaya untuk asuransi
+const activePeriod = <?php echo (int)$active_period; ?>;
 
 function openModal(tipe) {
 
     document.getElementById('tipeInput').value = tipe;
+
+    const insuranceBox = document.getElementById('insuranceBox');
+    if (insuranceBox) {
+        insuranceBox.style.display = (tipe === 'buy') ? 'block' : 'none';
+    }
+
+    if (tipe !== 'buy') {
+        document.getElementById('withInsuranceInput').value = 0;
+    } else {
+        setInsuranceChoice();
+    }
 
     document.getElementById('modalTitle').innerText =
         (tipe == 'buy' ? 'Beli ' : 'Jual ')
@@ -554,26 +596,6 @@ function openModal(tipe) {
         document.getElementById('tradeModal')
     ).show();
 
-    const insuranceBox = document.getElementById('insuranceBox');
-
-    if (insuranceBox) {
-        insuranceBox.style.display =
-            (tipeSim === 'properti' && tipe === 'buy')
-            ? 'block'
-            : 'none';
-
-        document.getElementById('withInsurance').value = 0;
-
-        document.querySelectorAll('.insurance-btn').forEach(b => {
-            b.classList.remove('active');
-        });
-
-        const firstInsuranceBtn = document.querySelector('.insurance-btn');
-        if (firstInsuranceBtn) {
-            firstInsuranceBtn.classList.add('active');
-        }
-    }
-
     // KHUSUS EDUKASI LANGSUNG HITUNG
     if(tipeSim==='edukasi'){
 
@@ -592,13 +614,9 @@ function selectQty(q, el) {
     calc();
 }
 
-function selectInsurance(value, el) {
-    document.querySelectorAll('.insurance-btn').forEach(b => b.classList.remove('active'));
-    el.classList.add('active');
-
-    document.getElementById('withInsurance').value = value;
-
-    calc();
+function setInsuranceChoice() {
+    const selected = document.querySelector('input[name="insurance_choice"]:checked');
+    document.getElementById('withInsuranceInput').value = selected ? selected.value : 0;
 }
 
 function calc() {
@@ -619,23 +637,9 @@ function calc() {
     total=price;
 
     }
-    else if(
-        tipeSim === 'properti'
-    ){
-
-        total = q * mult * price;
-
-        const tipe = document.getElementById('tipeInput').value;
-        const withInsurance = parseInt(document.getElementById('withInsurance').value) || 0;
-
-        if(tipe === 'buy' && withInsurance === 1){
-            total += q * insurancePrice;
-        }
-
-    }
     else{
 
-        total=q*mult*price;
+    total=q*mult*price;
 
     }
     
@@ -717,6 +721,14 @@ function confirmTrade() {
                         </b>
                     </td>
                 </tr>
+
+                ${tipeSim === 'properti' && tipe === 'buy' ? `
+                <tr>
+                    <td>Pilihan</td>
+                    <td align="right">
+                        <b>${document.getElementById('withInsuranceInput').value == 1 ? 'Apartkos + Asuransi' : 'Apartkos saja'}</b>
+                    </td>
+                </tr>` : ''}
 
             </table>
 
@@ -888,11 +900,11 @@ if(result.isConfirmed) {
 <script>
 document.addEventListener("DOMContentLoaded", function() {
     Swal.fire({
-        title: 'Keputusan Bisnis',
+        title: '<?php echo $asset['tipe_simulasi'] == 'properti' ? 'Keputusan Properti' : 'Keputusan Bisnis'; ?>',
         icon: 'question',
         html: `
             <div class="text-start" style="font-size: 0.95rem;">
-                <p>Bisnis <b><?php echo $asset['nama_aset']; ?></b> Anda telah memberikan imbal hasil / laba periode ini.</p>
+                <p><?php echo $asset['tipe_simulasi'] == 'properti' ? 'Properti' : 'Bisnis'; ?> <b><?php echo $asset['nama_aset']; ?></b> Anda telah memberikan imbal hasil / laba periode ini.</p>
                 <table class="table table-sm">
                     <tr>
                         <td>Imbal Hasil Didapat</td>
@@ -903,7 +915,7 @@ document.addEventListener("DOMContentLoaded", function() {
                         <td class="text-primary text-end fw-bold">Rp <?php echo number_format($val_jual_sekarang, 0, ',', '.'); ?></td>
                     </tr>
                 </table>
-                <p class="mb-0 text-danger fw-bold text-center mt-3">Apakah Anda ingin tetap menahan bisnis ini atau menjualnya?</p>
+                <p class="mb-0 text-danger fw-bold text-center mt-3">Apakah Anda ingin tetap menahan aset ini atau menjualnya?</p>
             </div>
         `,
         showDenyButton: true,

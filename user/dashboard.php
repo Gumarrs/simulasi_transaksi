@@ -94,7 +94,7 @@ $query_assets = mysqli_query($conn, "
     WHERE
     nama_aset NOT IN ('Showroom', 'Travel Agent')
     AND
-    (group_name IS NULL OR group_name = '')
+    (group_name IS NULL OR group_name = '' OR group_name = 'bodong' )
 ");
 
 $q_tour_parent = mysqli_query($conn, "
@@ -669,20 +669,19 @@ if (statusPeriode === 'closed') {
     }
 }
 </script>
-<?php if(!empty($_SESSION['deposito_notifications'])): ?>
 
 <script>
+const popupQueue = [];
 
+// DEPOSITO
+<?php if(!empty($_SESSION['deposito_notifications'])): ?>
 const depositoNotif = <?php echo json_encode($_SESSION['deposito_notifications']); ?>;
 
-async function showDepositoNotif() {
-
-    for (const item of depositoNotif) {
-
-        await Swal.fire({
-            icon: 'success',
-            title: 'Investasi Jatuh Tempo',
-html: `
+depositoNotif.forEach(item => {
+    popupQueue.push({
+        icon: 'success',
+        title: 'Investasi Jatuh Tempo',
+        html: `
             <div style="text-align:left">
                 <p>Profit Investasi <b>${item.aset}</b> telah cair. Pokok investasi tetap utuh di portofolio Anda.</p>
                 <hr>
@@ -695,40 +694,29 @@ html: `
                     </tr>
                 </table>
             </div>
-        `,
-            confirmButtonText: 'OK'
-        });
-
-    }
-
-}
-
-showDepositoNotif();
-
-</script>
-
+        `
+    });
+});
 <?php unset($_SESSION['deposito_notifications']); ?>
 <?php endif; ?>
 
+// FORCE SELL UMUM
 <?php if(!empty($_SESSION['force_sell_notifications'])): ?>
-<script>
 const forceSells = <?php echo json_encode($_SESSION['force_sell_notifications']); ?>;
-let indexFS = 0;
 
-function showForceSellNotif() {
-    if (indexFS >= forceSells.length) return;
-    const item = forceSells[indexFS];
-    indexFS++;
+forceSells.forEach(item => {
+    let profitText = item.profit >= 0
+        ? `+ Rp ${Number(item.profit).toLocaleString('id-ID')}`
+        : `- Rp ${Number(Math.abs(item.profit)).toLocaleString('id-ID')}`;
 
-    let profitText = item.profit >= 0 ? `+ Rp ${Number(item.profit).toLocaleString('id-ID')}` : `- Rp ${Number(Math.abs(item.profit)).toLocaleString('id-ID')}`;
     let profitColor = item.profit >= 0 ? 'green' : 'red';
 
-    Swal.fire({
-        title: 'Penjualan Otomatis Akhir Simulasi',
+    popupQueue.push({
         icon: 'info',
+        title: 'Penjualan Otomatis Akhir Simulasi',
         html: `
             <div style="text-align:left">
-                <p>Simulasi (Periode Terakhir) telah berakhir. Sisa aset <b>${item.aset}</b> Anda telah dicairkan otomatis ke Saldo Tunai.</p>
+                <p>Simulasi periode terakhir telah berakhir. Sisa aset <b>${item.aset}</b> Anda telah dicairkan otomatis ke Saldo Tunai.</p>
                 <hr>
                 <table style="width:100%">
                     <tr>
@@ -741,32 +729,57 @@ function showForceSellNotif() {
                     </tr>
                 </table>
             </div>
-        `,
-        confirmButtonText: 'OK',
-        allowOutsideClick: false
-    }).then(() => {
-        showForceSellNotif(); // Panggil notif selanjutnya jika ada beberapa aset
+        `
     });
-}
-
-// Jalankan notifikasi force sell
-setTimeout(showForceSellNotif, 500); // delay dikit agar tidak bentrok dengan notif deposito
-</script>
+});
 <?php unset($_SESSION['force_sell_notifications']); ?>
 <?php endif; ?>
+
+// FORCE SELL PROPERTI
+<?php if(!empty($_SESSION['properti_force_sell_notifications'])): ?>
+const propertiForceSells = <?php echo json_encode($_SESSION['properti_force_sell_notifications']); ?>;
+
+propertiForceSells.forEach(item => {
+    popupQueue.push({
+        icon: 'info',
+        title: 'Penjualan Otomatis Properti',
+        html: `
+            <div style="text-align:left">
+                <p>Periode terakhir telah ditutup. Sisa aset <b>${item.aset}</b> Anda dicairkan otomatis sesuai status asuransi.</p>
+                <hr>
+                <table style="width:100%">
+                    <tr>
+                        <td>Unit Dengan Asuransi</td>
+                        <td align="right"><b>${Number(item.unit_asuransi).toLocaleString('id-ID')}</b></td>
+                    </tr>
+                    <tr>
+                        <td>Unit Tanpa Asuransi</td>
+                        <td align="right"><b>${Number(item.unit_tanpa_asuransi).toLocaleString('id-ID')}</b></td>
+                    </tr>
+                    <tr>
+                        <td>Total Nilai Jual</td>
+                        <td align="right"><b>Rp ${Number(item.hasil_jual).toLocaleString('id-ID')}</b></td>
+                    </tr>
+                </table>
+                <p class="mt-3 mb-0 text-danger" style="font-size:0.8rem;">
+                    <i>* Properti tanpa asuransi bernilai Rp 0 pada periode 3.</i>
+                </p>
+            </div>
+        `
+    });
+});
+<?php unset($_SESSION['properti_force_sell_notifications']); ?>
+<?php endif; ?>
+
+// EDUKASI
 <?php if(!empty($_SESSION['edukasi_notifications'])): ?>
-<script>
 const edukasiNotif = <?php echo json_encode($_SESSION['edukasi_notifications']); ?>;
-let indexEdu = 0;
 
-function showEdukasiNotif() {
-    if (indexEdu >= edukasiNotif.length) return;
-    const item = edukasiNotif[indexEdu];
-    indexEdu++;
-
-    Swal.fire({
-        title: 'Manfaat Pendidikan',
+edukasiNotif.forEach(item => {
+    popupQueue.push({
         icon: 'success',
+        title: 'Manfaat Pendidikan',
+        confirmButtonText: 'Luar Biasa!',
         html: `
             <div style="text-align:left">
                 <p>Pendidikan <b>${item.aset}</b> yang Anda ambil telah meningkatkan penghasilan Anda!</p>
@@ -783,18 +796,34 @@ function showEdukasiNotif() {
                     <i>* Dana awal pendidikan hangus dan status pendidikan telah diselesaikan.</i>
                 </p>
             </div>
-        `,
-        confirmButtonText: 'Luar Biasa!',
-        allowOutsideClick: false
-    }).then(() => {
-        showEdukasiNotif(); 
+        `
     });
-}
-
-// Delay 1.2 detik agar tidak bertabrakan dengan popup deposito (jika ada)
-setTimeout(showEdukasiNotif, 1200); 
-</script>
+});
 <?php unset($_SESSION['edukasi_notifications']); ?>
 <?php endif; ?>
+
+async function runPopupQueue() {
+    await new Promise(resolve => setTimeout(resolve, 700));
+
+    for (const popup of popupQueue) {
+        await Swal.fire({
+            icon: popup.icon || 'info',
+            title: popup.title,
+            html: popup.html,
+            confirmButtonText: popup.confirmButtonText || 'OK',
+            allowOutsideClick: false,
+            allowEscapeKey: false
+        });
+
+        await new Promise(resolve => setTimeout(resolve, 350));
+    }
+}
+
+if (popupQueue.length > 0) {
+    runPopupQueue();
+}
+</script>
+
+
 </body>
 </html>

@@ -95,26 +95,12 @@ $query_portfolio = mysqli_query($conn, "
             END
         ) AS last_buy_period,
 
-        SUM(
-            CASE
-                WHEN t.type='buy' AND t.with_insurance = 1 THEN t.remaining_qty
-                ELSE 0
-            END
-        ) AS unit_asuransi,
-
-        SUM(
-            CASE
-                WHEN t.type='buy' AND t.with_insurance = 0 THEN t.remaining_qty
-                ELSE 0
-            END
-        ) AS unit_tanpa_asuransi,
-
         MAX(
             CASE
                 WHEN t.type='buy' THEN t.with_insurance
                 ELSE 0
             END
-        ) AS with_insurance
+        ) AS has_insurance
 
     FROM transactions t
 
@@ -146,8 +132,6 @@ $q_detail = mysqli_query($conn, "
         t.amount_money,
         t.realized_profit,
         t.buy_period,
-        t.buy_price,
-        t.with_insurance,
         a.nama_aset,
         a.group_name,
         a.tipe_simulasi
@@ -184,39 +168,14 @@ while($d = mysqli_fetch_assoc($q_detail)) {
         $history_detail[$period]['buy_total'] += $d['amount_money'];
 
         $label_aset =
-        (
-            !empty($d['group_name'])
-            &&
-            strtolower(trim($d['group_name'])) != 'bodong'
-        )
+        !empty($d['group_name'])
         ? $d['group_name'].' - '.$d['nama_aset']
         : $d['nama_aset'];
 
-        if ($d['tipe_simulasi'] == 'properti') {
-
-            $harga_properti = floatval($d['qty']) * floatval($d['buy_price']);
-            $biaya_asuransi = floatval($d['amount_money']) - $harga_properti;
-
-            $history_detail[$period]['buy_items'][] = [
-                'aset' => $label_aset,
-                'nominal' => $harga_properti
-            ];
-
-            if (intval($d['with_insurance']) == 1 && $biaya_asuransi > 0) {
-                $history_detail[$period]['buy_items'][] = [
-                    'aset' => 'Asuransi '.$label_aset,
-                    'nominal' => $biaya_asuransi
-                ];
-            }
-
-        } else {
-
-            $history_detail[$period]['buy_items'][] = [
-                'aset' => $label_aset,
-                'nominal' => $d['amount_money']
-            ];
-
-        }
+        $history_detail[$period]['buy_items'][] = [
+            'aset' => $label_aset,
+            'nominal' => $d['amount_money']
+        ];
     }
 
 // CAIR PROFIT DEPOSITO / LABA BISNIS (Tipe Sell tapi QTY = 0)
@@ -226,11 +185,11 @@ while($d = mysqli_fetch_assoc($q_detail)) {
         $p_profit = $d['buy_period']; 
         
         // Pembedaan Nama Label berdasarkan Tipe Simulasi
-    if ($d['tipe_simulasi'] == 'bisnis')
+    if ($d['tipe_simulasi'] == 'bisnis' || $d['tipe_simulasi'] == 'properti')
     {
 
         $label_aset=
-        'Laba Bisnis '
+        ($d['tipe_simulasi'] == 'properti' ? 'Laba Properti ' : 'Laba Bisnis ')
         .$d['nama_aset']
         .' (Periode '
         .$p_profit.
@@ -271,11 +230,7 @@ while($d = mysqli_fetch_assoc($q_detail)) {
         $history_detail[$period]['profit_total'] += $d['realized_profit'];
 
         $label_aset =
-        (
-            !empty($d['group_name'])
-            &&
-            strtolower(trim($d['group_name'])) != 'bodong'
-        )
+        !empty($d['group_name'])
         ? $d['group_name'].' - '.$d['nama_aset']
         : $d['nama_aset'];
 
@@ -559,39 +514,27 @@ body {
                     }
                     elseif ($row['tipe_simulasi'] == 'persentase') {
 
-                        $is_bodong =
-                            strtolower(trim($row['group_name'] ?? '')) == 'bodong';
-
                         $modal_awal =
                             floatval($row['total_modal_aktif']);
 
                         $label_unit =
                             "Rp " . number_format($modal_awal, 0, ',', '.');
 
-                        if ($is_bodong && $active_period >= 3) {
+                        $bunga =
+                            floatval($row['laba_now']);
 
-                            $nilai_sekarang = 0;
-                            $selisih = -$modal_awal;
-                            $persentase = -100;
-                            $laba_potensial = 0;
+                        $selisih =
+                            $modal_awal * ($bunga / 100);
 
-                        } else {
+                        $nilai_sekarang =
+                            $modal_awal + $selisih;
 
-                            $bunga =
-                                floatval($row['laba_now']);
+                        $persentase =
+                            $bunga;
 
-                            $selisih =
-                                $modal_awal * ($bunga / 100);
+                        $laba_potensial =
+                            $selisih;
 
-                            $nilai_sekarang =
-                                $modal_awal + $selisih;
-
-                            $persentase =
-                                $bunga;
-
-                            $laba_potensial =
-                                $selisih;
-                        }
                     }
 
                     // =====================================
@@ -625,34 +568,22 @@ body {
                     }
                     else{
 
-                    if (
-                        $row['tipe_simulasi'] == 'properti'
-                        &&
-                        $active_period == 3
-                    ) {
-                        $unit_asuransi =
-                            floatval($row['unit_asuransi']);
+                        if ($row['tipe_simulasi'] == 'properti' && intval($active_period) == 3 && intval($row['has_insurance']) <= 0) {
 
-                        $unit_tanpa_asuransi =
-                            floatval($row['unit_tanpa_asuransi']);
+                            $nilai_sekarang = 0;
 
-                        $nilai_sekarang =
-                            ($unit_asuransi * floatval($row['val_now']))
-                            +
-                            ($unit_tanpa_asuransi * 0);
+                        } else {
 
-                    } else {
+                            $nilai_sekarang =
+                                $row['total_unit'] * $row['val_now'];
 
-                        $nilai_sekarang =
-                            $row['total_unit'] * $row['val_now'];
+                        }
 
-                    }
+                        $modal_asli =
+                            floatval($row['total_modal_aktif']);
 
-                    $modal_asli =
-                        floatval($row['total_modal_aktif']);
-
-                    $selisih =
-                        $nilai_sekarang - $modal_asli;
+                        $selisih =
+                            $nilai_sekarang - $modal_asli;
 
                         $persentase =
                             ($modal_asli > 0)
@@ -679,7 +610,7 @@ body {
 
                     ?>
 
-                    <div class="portfolio-card p-3 mb-3" onclick="window.location.href='detail_aset.php?id=<?php echo $row['asset_id']; ?>'" style="cursor:pointer;" >
+                    <div class="portfolio-card p-3 mb-3">
 
                         <div class="d-flex justify-content-between align-items-center mb-2">
 
@@ -696,13 +627,9 @@ body {
                                <h6 class="asset-name mb-0">
 
                                 <?php
-                                    echo (
-                                        !empty($row['group_name'])
-                                        &&
-                                        strtolower(trim($row['group_name'])) != 'bodong'
-                                    )
-                                    ? $row['group_name'].' - '.$row['nama_aset']
-                                    : $row['nama_aset'];
+                                echo !empty($row['group_name'])
+                                ? $row['group_name'].' - '.$row['nama_aset']
+                                : $row['nama_aset'];
                                 ?>
 
                                 </h6>
